@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자격증 포털</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 카드 스타일 */
+.card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    text-align: center;
+    transition: box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* 아이콘과 카테고리 */
+.icon-category {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.cert-icon {
+    
+    
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+}
+.cert-icon img{
+	width:50px;
+}
+.category-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748; /* 어두운 회색 */
+}
+
+/* 타이틀 */
+.card-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2d3748; /* 타이틀 색상 */
+    margin-bottom: 10px;
+}
+
+/* 카테고리와 서브카테고리 */
+.category-subcategory {
+    display: flex;
+    justify-content: center; /* 양쪽 정렬이 아닌 가운데 정렬로 설정 */
+    
+    font-size: 14px;
+    color: #4a5568; /* 어두운 회색 */
+}
+
+.category,
+.subcategory {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 15px; /* padding으로 타원형 크기 조정 */
+    border-radius: 50px; /* 타원형 만들기 */
+    font-size: 14px;
+    font-weight: 500;
+    color: #4a5568; /* 텍스트 색상 */
+    background-color: #edf2f7; /* 배경색 */
+    margin-right: 10px; /* 카테고리 간 간격 */
+    white-space: nowrap; /* 텍스트가 한 줄로 유지되도록 설정 */
+}
+
+
+.category {
+    background-color: #ebf4ff; /* IT 관련 배경색 */
+    color: #2b6cb0; /* IT 텍스트 색상 */
+}
+
+/* 서브카테고리 스타일 */
+.subcategory {
+    background-color: #f7fafc; /* 서브카테고리 배경색 */
+    color: #4a5568; /* 서브카테고리 텍스트 색상 */
+}
+
+/* 버튼 스타일 */
+.card-footer {
+    margin-top: 20px;
+     background-color: transparent;
+     border-top: none;
+}
+
+.btn-details {
+    display: inline-block;
+    color: #3182ce; /* 파란색 텍스트 */
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 2px solid #3182ce; /* 파란색 테두리 */
+    border-radius: 25px; /* 둥근 모서리 */
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.btn-details:hover {
+    color: white;
+    background-color: #3182ce; /* 호버 시 파란색 배경 */
+    border-color: #2b6cb0; /* 호버 시 테두리 색상 변화 */
+    transform: translateY(-5px); /* 버튼이 살짝 떠오르는 효과 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
+}
+
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="fas fa-certificate text-primary me-2 fs-4"></i>
+                <span class="fw-bold">자격증 포털</span>
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link me-3" href="/board/list.html">
+                    <i class="fas fa-users me-1"></i>커뮤니티
+                </a>
+                <th:block th:if="${session.user != null}">
+                <a class="nav-link me-3" href="/dashboard">
+                    <i class="fas fa-user me-1"></i>마이페이지
+                </a>
+            </th:block>
+            <th:block th:if="${session.user == null}">
+                <a class="nav-link me-3" href="/login">
+                    <i class="fas fa-sign-in-alt me-1"></i>로그인
+                </a>
+            </div>
+        </div>
+    </nav>
+    <section class="container my-5">
+        <div class="row g-4">
+            <!-- 자격증 카드 예시 -->
+            <div class="col-lg-3 col-md-6" th:each="cert : ${certificates}">
+    <div class="card cert-card h-100">
+        <div class="card-body">
+            <!-- 아이콘과 카테고리 -->
+            <div class="icon-category">
+                <div class="cert-icon">
+                    <img th:src="@{${'/images/' + (cert.category == 'IT' ? 'computer.png' : (cert.category == '안전관리' ? 'shield.png' : 'default.png'))}}" 
+                     alt="아이콘" class="icon-img">
+                </div>
+                <span class="category-name" th:text="${cert.category} +분야">IT 분야</span>
+            </div>
+            
+            <!-- 타이틀 -->
+            <h5 class="card-title" th:text="${cert.certificateName}">타이틀</h5>
+            
+            <!-- 카테고리와 서브카테고리 -->
+            <div class="category-subcategory">
+                <span class="category" th:text="${cert.category}">카테고리</span>
+                <span class="subcategory" th:text="${cert.subCategory}">서브카테고리</span>
+            </div>
+
+            <!-- 버튼 -->
+             <div class="card-footer">
+                <a href="#" class="btn-details" 
+   th:attr="data-category=${cert.category}, data-subcategory=${cert.subCategory}, data-certificatename=${cert.certificateName}" 
+   onclick="redirectToBoard(this)">게시판 -></a>
+            </div>
+        </div>
+    </div>
+</div>
+        
+    </section>
+
+    <script>
+    // 자격증 버튼 클릭 시 해당 카테고리와 서브카테고리로 게시판 페이지로 이동
+function redirectToBoard(button) {
+    // 버튼에서 데이터 카테고리, 서브카테고리, 자격증 이름 값을 가져오기
+    const category = button.getAttribute('data-category');
+    const subcategory = button.getAttribute('data-subcategory');
+    const certificateName = button.getAttribute('data-certificatename');
+    
+    // 쿼리 파라미터로 카테고리, 서브카테고리, 자격증 이름 값을 전달
+    window.location.href = "/board/list?category=" + encodeURIComponent(category) + 
+                          "&subcategory=" + encodeURIComponent(subcategory) + 
+                          "&certificateName=" + encodeURIComponent(certificateName);
+}
+
+</script>
+</body>
+</html>

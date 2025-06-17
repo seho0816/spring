@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게시판 목록</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>게시판 목록</h2>
+        
+        <!-- 검색 조건 드롭다운 -->
+        <form method="get" action="/board/list">
+    <div class="row">
+        <div class="col-md-3">
+            <label for="category">카테고리:</label>
+            <select name="category" id="category" class="form-select" onchange="updateSubcategoriesAndCertifications()">
+                <option value="IT" th:selected="${selectedCategory == 'IT'}">IT</option>
+                <option value="안전관리" th:selected="${selectedCategory == '안전관리'}">안전관리</option>
+                
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="subcategory" >서브카테고리:</label>
+            <select name="subcategory" id="subcategory" class="form-select">
+                <option th:each="subcat : ${subcategories}" 
+                        th:value="${subcat}" 
+                        th:selected="${subcat == selectedSubcategory}">
+                    <span th:text="${subcat}"></span>
+                </option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="certificateName">자격증:</label>
+            <select name="certificateName" id="certificateName" class="form-select">
+                <!-- 자격증 목록 동적 출력 -->
+                <th:block th:each="certificate : ${certificates}">
+                    <option th:value="${certificate.certificateName}" 
+                            th:selected="${certificate.certificateName == selectedCertificate}">
+                        <span th:text="${certificate.certificateName}"></span>
+                    </option>
+                </th:block>
+            </select>
+        </div>
+    </div>
+</form>
+
+        <!-- 게시글 목록 -->
+        <div class="list-group mt-3">
+            <th:block th:each="board : ${boards}">
+                <a href="/board/{id}" th:href="@{/board/{id}(id=${board.id})}" class="list-group-item list-group-item-action">
+                    <h5 th:text="${board.title}">게시글 제목</h5>
+                    <p th:text="${board.content}">게시글 내용</p>
+                    <small th:text="${board.category}">카테고리</small>
+                    <small th:text="${board.subcategory}">서브카테고리</small>
+                </a>
+            </th:block>
+        </div>
+
+        <!-- 글 작성 버튼 -->
+        <a href="/board/write" class="btn btn-primary mt-3">글 작성</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function updateSubcategoriesAndCertifications() {
+        const category = document.getElementById("category").value;
+        const subcategoryDropdown = document.getElementById("subcategory");
+        const certificateDropdown = document.getElementById("certificateName");
+
+        // 서브카테고리와 자격증 초기화
+        let subcategories = [];
+        let certificates = [];
+        const selectedSubcategory = subcategoryDropdown.value;  // 현재 선택된 서브 카테고리 저장
+
+        // 카테고리와 서브카테고리에 맞는 자격증 설정
+        if (category === "IT") {
+            subcategories = ["정보통신", "보안"];
+            if (selectedSubcategory === "정보통신") {
+                certificates = ["정보처리기사", "정보처리산업기사"];
+            } else if (selectedSubcategory === "보안") {
+                certificates = ["정보보안기사", "정보보안산업기사"];
+            }
+        } else if (category === "안전관리") {
+            subcategories = ["안전관리", "비파괴검사"];
+            if (selectedSubcategory === "비파괴검사") {
+                certificates = ["비파괴검사기술사", "누설비파괴검사기사"];
+            } else if (selectedSubcategory === "안전관리") {
+                certificates = ["가스기사", "건설안전기사"];
+            }
+        }
+
+        // 서브카테고리 드롭다운 내용 초기화 후 추가
+        subcategoryDropdown.innerHTML = ''; // 기존 내용 비우기
+
+        // 서브카테고리 옵션 추가
+        subcategories.forEach(subcategory => {
+            let option = document.createElement("option");
+            option.value = subcategory;
+            option.textContent = subcategory;
+            // 서브카테고리 값이 이미 선택되어 있으면 선택 상태로 만들기
+            if (subcategory === selectedSubcategory) {
+                option.selected = true;
+            }
+            subcategoryDropdown.appendChild(option);
+        });
+
+        // 자격증 드롭다운 내용 초기화 후 추가
+        certificateDropdown.innerHTML = ''; // 기존 내용 비우기
+
+        // 자격증 옵션 추가
+        certificates.forEach(certificate => {
+            let option = document.createElement("option");
+            option.value = certificate;
+            option.textContent = certificate;
+            certificateDropdown.appendChild(option);
+        });
+    }
+
+    // 페이지 로드 시 드롭다운 초기화 호출
+    window.onload = updateSubcategoriesAndCertifications;
+
+    // 서브카테고리 변경 시 자격증 갱신
+    document.getElementById("subcategory").addEventListener("change", updateSubcategoriesAndCertifications);
+
+    // 카테고리 변경 시 서브카테고리와 자격증 갱신
+    document.getElementById("category").addEventListener("change", updateSubcategoriesAndCertifications);
+
+
+
+    
+    </script>
+</body>
+</html>
