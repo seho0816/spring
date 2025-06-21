@@ -32,6 +32,7 @@ public class Board {
 
     private String certificateName;
 
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
     
     private String imagePath;

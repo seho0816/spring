@@ -1,8 +1,6 @@
 package com.rubypaper.repository;
 
 import com.rubypaper.domain.Board;
-
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -21,11 +19,11 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     List<Board> findByCategoryAndSubcategoryAndCertificateName(String category, String subcategory, String certificateName);
     
     // 게시글 ID로 검색
-    @EntityGraph(attributePaths = {"user"})
     Optional<Board> findById(Long id);
+    
+    // 모든 게시글 검색(조건없음)
+    List<Board> findAll();
     
     // 게시글 삭제
     void deleteById(Long id);
-    
-    
 }

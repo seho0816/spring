@@ -55,7 +55,7 @@ public class BoardService {
 
     // 게시글 저장
     @Transactional
-    public void saveBoard(Board board, String userId) {
+    public void save(Board board, String userId) {
     	User user = userService.findByUserid(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
@@ -111,6 +111,35 @@ public class BoardService {
 
         // 그 외 다른 카테고리와 서브카테고리도 처리 가능
         return certificates;
+    }
+    @Transactional
+    public void updateBoard(Board board) {
+        // ID를 가진 기존 게시글을 찾습니다.
+        Optional<Board> existingBoardOptional = boardRepository.findById(board.getId());
+        if (existingBoardOptional.isPresent()) {
+            Board existingBoard = existingBoardOptional.get();
+
+            // 폼에서 넘어온 데이터로 기존 게시글의 필드를 업데이트합니다.
+            existingBoard.setTitle(board.getTitle());
+            existingBoard.setContent(board.getContent());
+            existingBoard.setCategory(board.getCategory());
+            existingBoard.setSubcategory(board.getSubcategory());
+            existingBoard.setCertificateName(board.getCertificateName());
+            existingBoard.setImagePath(board.getImagePath()); // 이미지 경로도 업데이트
+
+            System.out.println("DEBUG (Service) - Board ID from form: " + board.getId());
+            System.out.println("DEBUG (Service) - Board Title from form: " + board.getTitle());
+            System.out.println("DEBUG (Service) - Board Content from form: " + board.getContent());
+            System.out.println("---");
+            System.out.println("DEBUG (Service) - existingBoard ID BEFORE save: " + existingBoard.getId());
+            System.out.println("DEBUG (Service) - existingBoard Title BEFORE save: " + existingBoard.getTitle());
+            System.out.println("DEBUG (Service) - existingBoard Content BEFORE save: " + existingBoard.getContent());
+            System.out.println("--- Attempting to save existingBoard ---");
+            // save 메서드는 엔티티가 이미 존재하면 업데이트, 없으면 삽입을 수행합니다.
+            boardRepository.save(existingBoard);
+        } else {
+            throw new IllegalArgumentException("Invalid board Id: " + board.getId() + " for update operation.");
+        }
     }
 }
 

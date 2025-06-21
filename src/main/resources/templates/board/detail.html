@@ -5,8 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${board.title} + ' - 게시글 상세'"></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
+<script>
+        function checkEditPermission(boardId, boardAuthorId, loggedInUserId) {
+            // 로그인되어 있지 않은 경우
+            if (loggedInUserId === null || loggedInUserId === '') {
+                alert('로그인 후 수정할 수 있습니다.');
+                window.location.href = '/login'; // 로그인 페이지로 리다이렉트
+                return false;
+            }
+	
+
+            // 작성자가 아닌 경우
+            if (loggedInUserId !== boardAuthorId) {
+                alert('작성자만 게시글을 수정할 수 있습니다.');
+                return false;
+            }
+
+            // 모든 조건을 통과하면 수정 페이지로 이동
+            window.location.href = '/board/modify/' + boardId;
+            return true;
+        }
+    </script>
+<div th:replace="~{fragments/header :: header}"></div>
     <div class="container mt-5">
         <h2 th:text="${board.title}">게시글 제목</h2>
         <hr>
@@ -39,11 +63,83 @@
              style="max-width: 500px;">
     </div>
 </div>
+<div class="mt-4">
+<a th:href="@{/main}" class="btn btn-secondary">목록으로</a>
+
+			<a href="#"
+               th:onclick="checkEditPermission([[${board.id}]], [[${board.user?.userid}]], [[${loggedInUserid}]])"
+               class="btn btn-primary me-2">수정</a>
+                
+                 <button type="button" class="btn btn-danger" id="deleteButton">
+                     삭제
+                 </button>
+            
+
+            </div>
+    </div>
 
         <div class="mt-4">
-            <a th:href="@{/main}" class="btn btn-secondary">목록으로</a>
+           
             </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+   <script th:inline="javascript">
+        const boardId = /*[[${board.id}]]*/ -1;
+        const loggedInUserid = /*[[${loggedInUserid}]]*/ null; // 로그인된 사용자 ID를 JavaScript로 가져옴
+
+        const currentCategory = /*[[${board.category}]]*/ '';
+        const currentSubcategory = /*[[${board.subcategory}]]*/ '';
+        const currentCertificateName = /*[[${board.certificateName}]]*/ '';
+        
+        const deleteButton = document.getElementById('deleteButton');
+
+        if (deleteButton) {
+            deleteButton.addEventListener('click', function() {
+                // ★★★ 이 부분의 로직을 수정합니다. ★★★
+                if (loggedInUserid === null || loggedInUserid === 'null') { // loggedInUserid가 null이거나 문자열 "null"인 경우
+                    alert('로그인한 사용자만 삭제할 수 있습니다.');
+                    return; // 함수 실행을 여기서 중단합니다.
+                }
+
+                // 로그인된 경우에만 삭제 확인 메시지를 띄웁니다.
+                if (confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+                    const form = document.createElement('form');
+                    form.action = '/board/delete/' + boardId;
+                    form.method = 'post';
+                    
+                    const categoryInput = document.createElement('input');
+                    categoryInput.type = 'hidden';
+                    categoryInput.name = 'category';
+                    categoryInput.value = currentCategory;
+                    form.appendChild(categoryInput);
+
+                    const subcategoryInput = document.createElement('input');
+                    subcategoryInput.type = 'hidden';
+                    subcategoryInput.name = 'subcategory';
+                    subcategoryInput.value = currentSubcategory;
+                    form.appendChild(subcategoryInput);
+
+                    const certificateNameInput = document.createElement('input');
+                    certificateNameInput.type = 'hidden';
+                    certificateNameInput.name = 'selectedCertificate'; // listBoards에서 이 이름으로 받음
+                    certificateNameInput.value = currentCertificateName;
+                    form.appendChild(certificateNameInput);
+                    
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+
+        // 서버로부터 오는 에러 메시지 처리 (기존과 동일)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('error') && urlParams.get('error') === 'noPermission') {
+            alert('이 게시글을 삭제할 권한이 없습니다.');
+        } else if (urlParams.has('error') && urlParams.get('error') === 'notLoggedIn') {
+            
+            alert('로그인 후 삭제할 수 있습니다.');
+        }
+    </script>
 </body>
 </html>
