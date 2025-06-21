@@ -55,7 +55,7 @@ public class BoardService {
 
     // 게시글 저장
     @Transactional
-    public void saveBoard(Board board, String userId) {
+    public void save(Board board, String userId) {
     	User user = userService.findByUserid(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 

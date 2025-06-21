@@ -41,7 +41,6 @@
             <th:block th:each="board : ${boards}">
                 <a href="/board/{id}" th:href="@{/board/{id}(id=${board.id})}" class="list-group-item list-group-item-action">
                     <h5 th:text="${board.title}">게시글 제목</h5>
-                    <p th:text="${board.content}">게시글 내용</p>
                     <small th:text="${board.category}" class="badge bg-secondary text-white">카테고리</small>
                     <small th:text="${board.subcategory}" class="badge bg-secondary text-white ms-2">서브카테고리</small>
                     <small th:text="${board.certificateName}" class="badge bg-secondary text-white ms-2">자격증</small>
