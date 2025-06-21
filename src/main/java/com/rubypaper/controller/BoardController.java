@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 // import org.springframework.validation.BindingResult; // 사용하지 않으면 제거
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,7 @@ import com.rubypaper.domain.Board;
 import com.rubypaper.domain.Certificate;
 import com.rubypaper.domain.User;
 import com.rubypaper.service.BoardService;
+import com.rubypaper.service.CommentService;
 // import com.rubypaper.service.CertificateService; // 사용하지 않으면 제거
 import com.rubypaper.service.UserService;
 
@@ -48,6 +50,9 @@ public class BoardController {
 	   
 	 	@Autowired
 	 	private UserService userService;
+	 	
+	 	@Autowired
+	 	private CommentService commentService;
 	 	
 	    @Value("${file.upload-dir}") // 실제 파일 저장 경로
 	    private String uploadDir;
@@ -122,11 +127,13 @@ public class BoardController {
 	    }
     // 게시글 상세 페이지
 	    @GetMapping("/{id}")
+	    @Transactional(readOnly = true)
 	    public String boardDetail(@PathVariable Long id, Model model, HttpSession session) {
 	        Board board = boardService.getBoardById(id)
 	                .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + id));
 	        model.addAttribute("board", board);
 
+	        model.addAttribute("comments", commentService.getCommentsByBoardId(id));
 
 	        User loggedInUser = (User) session.getAttribute("user");
 	        String loggedInUserid = (loggedInUser != null) ? loggedInUser.getUserid() : null; // User 객체에서 userid 추출
