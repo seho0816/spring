@@ -49,8 +49,14 @@ public class BoardService {
     }
     
     // 게시글을 ID로 찾는 메서드
+    @Transactional // DB 변경(조회수 증가)이 있으므로 트랜잭션 필요
     public Optional<Board> getBoardById(Long id) {
-        return boardRepository.findById(id);
+        Optional<Board> boardOptional = boardRepository.findById(id); // ID로 게시글 조회
+        boardOptional.ifPresent(board -> {
+            board.increaseViewcount(); // Board 엔티티의 increaseViewcount() 메서드 호출
+            boardRepository.save(board); // 변경된 조회수를 데이터베이스에 저장
+        });
+        return boardOptional;
     }
 
     // 게시글 저장
@@ -127,14 +133,7 @@ public class BoardService {
             existingBoard.setCertificateName(board.getCertificateName());
             existingBoard.setImagePath(board.getImagePath()); // 이미지 경로도 업데이트
 
-            System.out.println("DEBUG (Service) - Board ID from form: " + board.getId());
-            System.out.println("DEBUG (Service) - Board Title from form: " + board.getTitle());
-            System.out.println("DEBUG (Service) - Board Content from form: " + board.getContent());
-            System.out.println("---");
-            System.out.println("DEBUG (Service) - existingBoard ID BEFORE save: " + existingBoard.getId());
-            System.out.println("DEBUG (Service) - existingBoard Title BEFORE save: " + existingBoard.getTitle());
-            System.out.println("DEBUG (Service) - existingBoard Content BEFORE save: " + existingBoard.getContent());
-            System.out.println("--- Attempting to save existingBoard ---");
+            
             // save 메서드는 엔티티가 이미 존재하면 업데이트, 없으면 삽입을 수행합니다.
             boardRepository.save(existingBoard);
         } else {

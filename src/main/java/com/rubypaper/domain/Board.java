@@ -1,9 +1,13 @@
 package com.rubypaper.domain;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,6 +16,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.ToString;
@@ -32,7 +37,7 @@ public class Board {
 
     private String certificateName;
 
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
     
     private String imagePath;
@@ -46,6 +51,28 @@ public class Board {
     @CreationTimestamp // 게시글 작성 시 현재 시간으로 설정함
     @Column(nullable = false, updatable = false) // 생성 시에만 설정되고 업데이트 불가
     private LocalDateTime createdDate;
+    
+    // 댓글이 있는 게시판 삭제를 위한 cascade
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude // ToString 순환 참조 방지
+    private List<Comment> comments = new ArrayList<>();
 
+    // 조회수
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private Long viewcount = 0L;
+    
+    // 조회수 증가
+    public void increaseViewcount() {
+        if (this.viewcount == null) {
+            this.viewcount = 0L;
+        }
+        this.viewcount++;
+    }
+    
+    // 댓글 수 확인
+    public int getCommentCount() {
+        return this.comments != null ? this.comments.size() : 0;
+    }
 }
 

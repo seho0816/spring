@@ -16,7 +16,10 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 // import org.springframework.validation.BindingResult; // 사용하지 않으면 제거
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,11 +30,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 // import org.springframework.web.util.UriComponentsBuilder; // 사용하지 않으면 제거
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rubypaper.domain.Board;
 import com.rubypaper.domain.Certificate;
 import com.rubypaper.domain.User;
 import com.rubypaper.service.BoardService;
+import com.rubypaper.service.CommentService;
 // import com.rubypaper.service.CertificateService; // 사용하지 않으면 제거
 import com.rubypaper.service.UserService;
 
@@ -49,6 +54,9 @@ public class BoardController {
 	 	@Autowired
 	 	private UserService userService;
 	 	
+	 	@Autowired
+	 	private CommentService commentService;
+	 	
 	    @Value("${file.upload-dir}") // 실제 파일 저장 경로
 	    private String uploadDir;
 
@@ -60,6 +68,7 @@ public class BoardController {
 	 // 게시판 목록 조회 (게시판 페이지)
 	    @GetMapping("/list")
 	    public String listBoards(
+	    		@PageableDefault(size = 5, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
 	            @RequestParam(value = "category", required = false) String category, // category는 항상 있을 것이므로 required = true (기본값)
 	            @RequestParam(value = "subcategory", required = false) String subcategory, // subcategory도 항상 있을 것이므로 required = true (기본값)
 	            @RequestParam(value = "certificateName", required = false) String certificateNameFromUrl, // URL 초기 진입 시 (필수 아님)
@@ -122,11 +131,13 @@ public class BoardController {
 	    }
     // 게시글 상세 페이지
 	    @GetMapping("/{id}")
+	    
 	    public String boardDetail(@PathVariable Long id, Model model, HttpSession session) {
 	        Board board = boardService.getBoardById(id)
 	                .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + id));
 	        model.addAttribute("board", board);
 
+	        model.addAttribute("comments", commentService.getCommentsByBoardId(id));
 
 	        User loggedInUser = (User) session.getAttribute("user");
 	        String loggedInUserid = (loggedInUser != null) ? loggedInUser.getUserid() : null; // User 객체에서 userid 추출
@@ -230,9 +241,15 @@ public class BoardController {
         public String writeForm(@RequestParam(value = "category", required = false) String category,
                                 @RequestParam(value = "subcategory", required = false) String subcategory,
                                 @RequestParam(value = "certificateName", required = false) String certificateName,
-                                Model model) {
-        	System.out.println("selectedCertificate: " + certificateName);
-            System.out.println("certificateName: " + certificateName);
+                                Model model,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+        	
+        	 User loggedInUser = (User) session.getAttribute("user");
+        	 if(loggedInUser == null) {
+        		 redirectAttributes.addFlashAttribute("errorMessage", "글 작성을 위해 로그인해주세요.");
+                 return "redirect:/login";
+        	 }
             // 기본값 설정 (카테고리, 서브카테고리, 자격증)
             List<String> categories = Arrays.asList("IT", "안전관리");
             List<String> subcategories = new ArrayList<>();
@@ -284,8 +301,7 @@ public class BoardController {
 
             
             if (loggedInUserid == null) {
-                // 로그인되어 있지 않으면 로그인 페이지로 리다이렉트
-                // 메시지를 전달하여 로그인 후 다시 시도하도록 유도할 수 있음
+                
                 return "redirect:/login?redirectUrl=/board/modify/" + id; // 로그인 후 다시 수정 페이지로 오도록
             }
             

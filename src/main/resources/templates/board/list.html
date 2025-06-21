@@ -46,6 +46,8 @@
                     <small th:text="${board.category}" class="badge bg-secondary text-white">카테고리</small>
                     <small th:text="${board.subcategory}" class="badge bg-secondary text-white ms-2">서브카테고리</small>
                     <small th:text="${board.certificateName}" class="badge bg-secondary text-white ms-2">자격증</small>
+                    <small class="badge bg-info text-white ms-2">조회수: <span th:text="${board.viewcount}">0</span></small>
+                     <small class="badge bg-primary text-white ms-2">댓글: <span th:text="${board.commentCount}">0</span></small>
                 </a>
             </th:block>
         </div>
