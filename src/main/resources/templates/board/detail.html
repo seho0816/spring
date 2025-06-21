@@ -142,7 +142,11 @@
         <hr>
         <div class="row mb-3 text-muted">
             <div class="col-md-6">
+<<<<<<< HEAD
                 <p><strong>작성자:</strong> <span th:text="${board.user.name}">작성자이름</span></p>
+=======
+                <p><strong>작성자:</strong> <span th:text="${board.user.name}">작성자이름</span> (<span th:text="${board.user.userid}">작성자ID</span>)</p>
+>>>>>>> 0105a79d89d79f2e239b710a956f1185e5537005
             </div>
             <div class="col-md-6 text-md-end">
                 <p><strong>작성일:</strong> <span th:text="${#temporals.format(board.createdDate, 'yyyy-MM-dd HH:mm')}">2023-01-01 12:00</span></p>
@@ -205,7 +209,11 @@
             <div class="comment-list">
                 <div th:each="comment : ${comments}" class="comment-box">
                     <div class="comment-meta">
+<<<<<<< HEAD
                         <strong th:text="${comment.user.name}">댓글 작성자명</strong>
+=======
+                        <strong th:text="${comment.user.name}">댓글 작성자명</strong> <span th:text="'(' + ${comment.user.userid} + ')'" class="text-muted ms-1"></span>
+>>>>>>> 0105a79d89d79f2e239b710a956f1185e5537005
                         <span th:if="${comment.user.userid == board.user.userid}" class="comment-author-badge">작성자</span>
                         <span th:text="${#temporals.format(comment.createdDate, 'yyyy-MM-dd HH:mm')}" class="date">작성일시</span>
                     </div>
