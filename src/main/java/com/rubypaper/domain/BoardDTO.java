@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public class BoardDTO {
     private Long id;
     private String title;
-    private String content;
+    private String preview;
     private LocalDateTime createdAt;
     //private int viewCount;
 }

@@ -67,14 +67,31 @@ public class UserService {
     public List<BoardDTO> getUserBoards(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("유저 없음"));
+
         return user.getBoards().stream()
-                .map(board -> new BoardDTO(
-                        board.getId(),
-                        board.getTitle(),
-                        board.getContent(),
-                        board.getCreatedDate()
-                        //board.getViewCount()
-                ))
+                .map(board -> {
+                    String preview = abbreviate(board.getContent(), 100); // HTML 무시하고 텍스트만 자름
+
+                    return new BoardDTO(
+                            board.getId(),
+                            board.getTitle(),
+                            preview,
+                            board.getCreatedDate()
+                    );
+                })
                 .collect(Collectors.toList());
     }
+    /// 마이페이지 폰트 적용되게 하는 함수 -> utext쓸 경우 div 생략되서 한 게시글에 모든 게시글이 포함됨.
+    public String abbreviate(String content, int maxLength) {
+        // HTML 태그 제거
+        String plainText = content.replaceAll("<[^>]*>", ""); // <태그> 제거
+
+        // 자르기
+        if (plainText.length() > maxLength) {
+            return plainText.substring(0, maxLength) + "...";
+        } else {
+            return plainText;
+        }
+    }
+
 }
