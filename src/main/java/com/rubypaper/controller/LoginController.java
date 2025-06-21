@@ -1,6 +1,8 @@
 package com.rubypaper.controller;
 
 
+import com.rubypaper.domain.Board;
+import com.rubypaper.domain.BoardDTO;
 import jakarta.servlet.http.HttpSession;
 
 import jakarta.transaction.Transactional;
@@ -17,6 +19,7 @@ import com.rubypaper.service.UserService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 
 @org.springframework.stereotype.Controller
@@ -107,6 +110,7 @@ public class LoginController {
     @GetMapping("/dashboard")
     public String dashboard(HttpSession session, Model model) {
         User user = (User) session.getAttribute("user");
+        List<BoardDTO> boardDTO = userService.getUserBoards(user.getId());
         if (user == null) {
         	System.out.println("세션에 사용자 정보가 없어요");
             return "redirect:/";
@@ -114,7 +118,7 @@ public class LoginController {
         else {
         	System.out.println("로그인된 사용자 : "+ user.getUserid());
         }
-        
+        model.addAttribute("boards", boardDTO);
         model.addAttribute("user", user);
         model.addAttribute("allUsers", userService.findAllUsers());
         return "dashboard";

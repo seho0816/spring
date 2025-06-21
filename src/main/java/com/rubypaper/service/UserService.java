@@ -2,6 +2,8 @@ package com.rubypaper.service;
 
 
 
+import com.rubypaper.domain.BoardDTO;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,6 +15,7 @@ import com.rubypaper.repository.UserRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -59,4 +62,19 @@ public class UserService {
     // 사용자 삭제
     @Transactional
     public void deleteUser(@PathVariable String id) {userRepository.deleteUserByUserid(id);}
+
+    @Transactional
+    public List<BoardDTO> getUserBoards(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("유저 없음"));
+        return user.getBoards().stream()
+                .map(board -> new BoardDTO(
+                        board.getId(),
+                        board.getTitle(),
+                        board.getContent(),
+                        board.getCreatedDate()
+                        //board.getViewCount()
+                ))
+                .collect(Collectors.toList());
+    }
 }

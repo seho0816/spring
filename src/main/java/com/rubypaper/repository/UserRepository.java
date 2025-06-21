@@ -2,6 +2,7 @@ package com.rubypaper.repository;
 
 
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -18,4 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     void deleteUserById(Long id);
 
     void deleteUserByUserid(@NotBlank(message = "아이디는 필수 입니다.") String userid);
+
+    @EntityGraph(attributePaths = "boards")
+    Optional<User> findById (Long Userid);
 }

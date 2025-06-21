@@ -60,4 +60,7 @@ public class User {
 
     public LocalDate getSuspendedUntil() { return suspendedUntil; }
     public void setSuspendedUntil(LocalDate suspendedUntil) {this.suspendedUntil = suspendedUntil; }
+
+    public List<Board> getBoards() { return boards; }
+    public void setBoards(List<Board> boards) { this.boards = boards; }
 }

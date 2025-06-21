@@ -90,13 +90,13 @@
             </div>
             <div class="card-body">
                 <!-- userposts -> 임의로 만든 게시판 테이블-->
-                <div th:if="${#lists.isEmpty(userPosts)}" class="text-center text-muted py-4">
+                <div th:if="${#lists.isEmpty(boards)}" class="text-center text-muted py-4">
                     <p>작성한 게시글이 없습니다.</p>
                     <a href="/board/write" class="btn btn-success">첫 번째 글 작성하기</a>
                 </div>
 
-                <div th:if="${!#lists.isEmpty(userPosts)}">
-                    <div th:each="post : ${userPosts}" class="post-item"
+                <div th:if="${!#lists.isEmpty(boards)}">
+                    <div th:each="post : ${boards}" class="post-item"
                          th:onclick="'location.href=\'/board/' + ${post.id} + '\''"> <!-- v0가 만든 임의 주소-->
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
@@ -104,9 +104,9 @@
                                 <p class="mb-1 text-muted" th:text="${#strings.abbreviate(post.content, 100)}">
                                     게시글 내용 미리보기...
                                 </p>
-                                <div class="post-meta">
+                               < <div class="post-meta">
                                     <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
-                                    <span class="ms-2">조회수: <span th:text="${post.viewCount}">0</span></span>
+                                   <!--<span class="ms-2">조회수: <span th:text="${post.viewCount}">0</span></span>-->
                                 </div>
                             </div>
                             <div class="ms-3">
