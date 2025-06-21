@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${board.title} + ' - 게시글 상세'"></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 th:text="${board.title}">게시글 제목</h2>
+        <hr>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <p><strong>작성자:</strong> <span th:text="${board.user.userid}">작성자ID</span></p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p><strong>작성일:</strong> <span th:text="${#temporals.format(board.createdDate, 'yyyy-MM-dd HH:mm')}">2023-01-01 12:00</span></p>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <p><strong>카테고리:</strong> <span th:text="${board.category}">IT</span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>서브카테고리:</strong> <span th:text="${board.subcategory}">정보통신</span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>자격증:</strong> <span th:text="${board.certificateName}">정보처리기사</span></p>
+            </div>
+        </div>
+        <div class="mb-3">
+    <p><strong>내용:</strong></p>
+    <div class="card p-3">
+        <div th:utext="${board.content}"></div> <img th:if="${board.imagePath != null and board.imagePath != ''}"
+             th:src="@{${board.imagePath}}"
+             alt="첨부 이미지"
+             class="img-fluid mt-3"
+             style="max-width: 500px;">
+    </div>
+</div>
+
+        <div class="mt-4">
+            <a th:href="@{/main}" class="btn btn-secondary">목록으로</a>
+            </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

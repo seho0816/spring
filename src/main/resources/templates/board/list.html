@@ -9,127 +9,168 @@
 <body>
     <div class="container mt-5">
         <h2>게시판 목록</h2>
-        
-        <!-- 검색 조건 드롭다운 -->
-        <form method="get" action="/board/list">
-    <div class="row">
-        <div class="col-md-3">
-            <label for="category">카테고리:</label>
-            <select name="category" id="category" class="form-select" onchange="updateSubcategoriesAndCertifications()">
-                <option value="IT" th:selected="${selectedCategory == 'IT'}">IT</option>
-                <option value="안전관리" th:selected="${selectedCategory == '안전관리'}">안전관리</option>
-                
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label for="subcategory" >서브카테고리:</label>
-            <select name="subcategory" id="subcategory" class="form-select">
-                <option th:each="subcat : ${subcategories}" 
-                        th:value="${subcat}" 
-                        th:selected="${subcat == selectedSubcategory}">
-                    <span th:text="${subcat}"></span>
-                </option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label for="certificateName">자격증:</label>
-            <select name="certificateName" id="certificateName" class="form-select">
-                <!-- 자격증 목록 동적 출력 -->
-                <th:block th:each="certificate : ${certificates}">
-                    <option th:value="${certificate.certificateName}" 
-                            th:selected="${certificate.certificateName == selectedCertificate}">
-                        <span th:text="${certificate.certificateName}"></span>
-                    </option>
-                </th:block>
-            </select>
-        </div>
-    </div>
-</form>
 
-        <!-- 게시글 목록 -->
+        <input type="hidden" id="initialCategory" th:value="${selectedCategory}">
+        <input type="hidden" id="initialSubcategory" th:value="${selectedSubcategory}">
+        <input type="hidden" id="initialCertificate" th:value="${selectedCertificate}">
+
+        <form method="get" action="/board/list">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="category">카테고리:</label>
+                    <select name="category" id="category" class="form-select">
+                        <option value="IT">IT</option>
+                        <option value="안전관리">안전관리</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="subcategory">서브카테고리:</label>
+                    <select name="subcategory" id="subcategory" class="form-select">
+                        </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="selectedCertificate">자격증:</label>
+                    <select name="selectedCertificate" id="selectedCertificate" class="form-select">
+                        </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary mt-3">검색</button>
+        </form>
+
         <div class="list-group mt-3">
             <th:block th:each="board : ${boards}">
                 <a href="/board/{id}" th:href="@{/board/{id}(id=${board.id})}" class="list-group-item list-group-item-action">
                     <h5 th:text="${board.title}">게시글 제목</h5>
                     <p th:text="${board.content}">게시글 내용</p>
-                    <small th:text="${board.category}">카테고리</small>
-                    <small th:text="${board.subcategory}">서브카테고리</small>
+                    <small th:text="${board.category}" class="badge bg-secondary text-white">카테고리</small>
+                    <small th:text="${board.subcategory}" class="badge bg-secondary text-white ms-2">서브카테고리</small>
+                    <small th:text="${board.certificateName}" class="badge bg-secondary text-white ms-2">자격증</small>
                 </a>
             </th:block>
         </div>
 
-        <!-- 글 작성 버튼 -->
-        <a href="/board/write" class="btn btn-primary mt-3">글 작성</a>
+        <a th:href="@{/board/write(category=${selectedCategory}, subcategory=${selectedSubcategory}, certificateName=${selectedCertificate})}" class="btn btn-primary mt-3">글 작성</a>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    function updateSubcategoriesAndCertifications() {
-        const category = document.getElementById("category").value;
-        const subcategoryDropdown = document.getElementById("subcategory");
-        const certificateDropdown = document.getElementById("certificateName");
+        // 다음 JavaScript 코드를 여기에 넣습니다.
+    </script>
+</body>
+</html>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // 이 함수는 페이지 로드 시 드롭다운을 초기화합니다.
+    function initDropdowns() {
+        // 숨겨진 필드에서 초기값들을 가져옵니다.
+        const initialCategory = document.getElementById("initialCategory").value;
+        const initialSubcategory = document.getElementById("initialSubcategory").value;
+        const initialCertificate = document.getElementById("initialCertificate").value;
 
-        // 서브카테고리와 자격증 초기화
+        const categoryDropdown = document.getElementById("category");
+        const subcategoryDropdown = document.getElementById("subcategory");
+        const certificateDropdown = document.getElementById("selectedCertificate");
+
+        // 카테고리 드롭다운 설정
+        categoryDropdown.value = initialCategory || 'IT'; // 초기값이 없으면 기본값 'IT'
+
+        // 서브카테고리 및 자격증 드롭다운 업데이트
+        // 이 함수를 호출하여 초기값을 기준으로 드롭다운을 채웁니다.
+        updateRelatedDropdowns(initialCategory, initialSubcategory, initialCertificate);
+    }
+
+    // 이 함수는 카테고리/서브카테고리 변경 시 관련 드롭다운을 업데이트합니다.
+    function updateRelatedDropdowns(selectedCategoryVal, selectedSubcategoryVal, selectedCertificateVal) {
+        const categoryDropdown = document.getElementById("category");
+        const subcategoryDropdown = document.getElementById("subcategory");
+        const certificateDropdown = document.getElementById("selectedCertificate");
+
+        // 현재 카테고리 값 (수동 변경 또는 초기값)
+        const currentCategory = selectedCategoryVal || categoryDropdown.value;
+
         let subcategories = [];
         let certificates = [];
-        const selectedSubcategory = subcategoryDropdown.value;  // 현재 선택된 서브 카테고리 저장
 
-        // 카테고리와 서브카테고리에 맞는 자격증 설정
-        if (category === "IT") {
+        // 1. 카테고리에 따른 서브카테고리 목록 결정
+        if (currentCategory === "IT") {
             subcategories = ["정보통신", "보안"];
-            if (selectedSubcategory === "정보통신") {
+        } else if (currentCategory === "안전관리") {
+            subcategories = ["비파괴검사", "안전관리"];
+        }
+
+        // 2. 서브카테고리 드롭다운 업데이트
+        subcategoryDropdown.innerHTML = ''; // 기존 옵션 비우기
+        let subcategorySelected = false; // 선택 여부 플래그
+        subcategories.forEach(subcat => {
+            let option = document.createElement("option");
+            option.value = subcat;
+            option.textContent = subcat;
+            // 초기값 또는 이전 선택값과 일치하면 선택
+            if (subcat === selectedSubcategoryVal && !subcategorySelected) {
+                option.selected = true;
+                subcategorySelected = true;
+            }
+            subcategoryDropdown.appendChild(option);
+        });
+        // 만약 초기값이 없거나 목록에 없으면 첫 번째 서브카테고리 선택
+        if (!subcategorySelected && subcategories.length > 0) {
+            subcategoryDropdown.value = subcategories[0];
+        } else if (subcategories.length === 0) { // 서브카테고리가 없는 경우
+            subcategoryDropdown.value = '';
+        }
+
+        // 3. 현재 (새로 설정된) 서브카테고리 값을 기반으로 자격증 목록 결정
+        const effectiveSubcategory = subcategoryDropdown.value; // 실제 선택된 서브카테고리 값
+
+        if (currentCategory === "IT") {
+            if (effectiveSubcategory === "정보통신") {
                 certificates = ["정보처리기사", "정보처리산업기사"];
-            } else if (selectedSubcategory === "보안") {
+            } else if (effectiveSubcategory === "보안") {
                 certificates = ["정보보안기사", "정보보안산업기사"];
             }
-        } else if (category === "안전관리") {
-            subcategories = ["안전관리", "비파괴검사"];
-            if (selectedSubcategory === "비파괴검사") {
+        } else if (currentCategory === "안전관리") {
+            if (effectiveSubcategory === "비파괴검사") {
                 certificates = ["비파괴검사기술사", "누설비파괴검사기사"];
-            } else if (selectedSubcategory === "안전관리") {
+            } else if (effectiveSubcategory === "안전관리") {
                 certificates = ["가스기사", "건설안전기사"];
             }
         }
 
-        // 서브카테고리 드롭다운 내용 초기화 후 추가
-        subcategoryDropdown.innerHTML = ''; // 기존 내용 비우기
-
-        // 서브카테고리 옵션 추가
-        subcategories.forEach(subcategory => {
-            let option = document.createElement("option");
-            option.value = subcategory;
-            option.textContent = subcategory;
-            // 서브카테고리 값이 이미 선택되어 있으면 선택 상태로 만들기
-            if (subcategory === selectedSubcategory) {
-                option.selected = true;
-            }
-            subcategoryDropdown.appendChild(option);
-        });
-
-        // 자격증 드롭다운 내용 초기화 후 추가
-        certificateDropdown.innerHTML = ''; // 기존 내용 비우기
-
-        // 자격증 옵션 추가
+        // 4. 자격증 드롭다운 업데이트
+        certificateDropdown.innerHTML = ''; // 기존 옵션 비우기
+        let certificateSelected = false; // 선택 여부 플래그
         certificates.forEach(certificate => {
             let option = document.createElement("option");
             option.value = certificate;
             option.textContent = certificate;
+            // 초기값 또는 이전 선택값과 일치하면 선택
+            if (certificate === selectedCertificateVal && !certificateSelected) {
+                option.selected = true;
+                certificateSelected = true;
+            }
             certificateDropdown.appendChild(option);
         });
+        // 만약 초기값이 없거나 목록에 없으면 첫 번째 자격증 선택
+        if (!certificateSelected && certificates.length > 0) {
+            certificateDropdown.value = certificates[0];
+        } else if (certificates.length === 0) { // 자격증이 없는 경우
+            certificateDropdown.value = '';
+        }
     }
 
-    // 페이지 로드 시 드롭다운 초기화 호출
-    window.onload = updateSubcategoriesAndCertifications;
 
-    // 서브카테고리 변경 시 자격증 갱신
-    document.getElementById("subcategory").addEventListener("change", updateSubcategoriesAndCertifications);
+    // 페이지 로드 시 초기 드롭다운 설정 함수 호출
+    window.onload = initDropdowns;
 
-    // 카테고리 변경 시 서브카테고리와 자격증 갱신
-    document.getElementById("category").addEventListener("change", updateSubcategoriesAndCertifications);
+    // 카테고리 변경 시 관련 드롭다운 업데이트 (사용자 조작 시)
+    document.getElementById("category").addEventListener("change", function() {
+        updateRelatedDropdowns(this.value, null, null); // 카테고리만 변경되었으므로 서브/자격증 초기화
+    });
 
+    // 서브카테고리 변경 시 자격증 갱신 (사용자 조작 시)
+    document.getElementById("subcategory").addEventListener("change", function() {
+        const currentCategory = document.getElementById("category").value;
+        updateRelatedDropdowns(currentCategory, this.value, null); // 서브카테고리만 변경되었으므로 자격증 초기화
+    });
+</script>
 
-
-    
-    </script>
-</body>
-</html>

@@ -37,7 +37,9 @@ public class LoginController {
         
         model.addAttribute("user", new User());
         return "login";
-    }
+    } ////// 지금 글 작성 시에 마이페이지에 가는 이유가 이거임
+    // 로그인을 하고 글을 작성하지만 세션에 사용자 정보가 담겨있는지 아닌지는 모르겠고 아무튼 세션에서 읽어올 수가 없음
+    // 그래서 코드가 로그인 폼으로 보내지만 재현이가 만든 로그인이 되있으면 대시보드로 보내는 이 코드가 작동하는거임 그래서 마이페이지로 가지는거
     
     // 회원가입 처리
     @PostMapping("/signup")
@@ -80,6 +82,7 @@ public class LoginController {
         try {
             User user = userService.authenticateUser(userid, password);
             session.setAttribute("user", user);
+            
             LocalDate suspendDay= user.getSuspendedUntil();
             if (user.getSuspendedUntil() != null && user.getSuspendedUntil().isAfter(LocalDate.now())) {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
@@ -105,7 +108,11 @@ public class LoginController {
     public String dashboard(HttpSession session, Model model) {
         User user = (User) session.getAttribute("user");
         if (user == null) {
+        	System.out.println("세션에 사용자 정보가 없어요");
             return "redirect:/";
+        }
+        else {
+        	System.out.println("로그인된 사용자 : "+ user.getUserid());
         }
         
         model.addAttribute("user", user);

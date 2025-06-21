@@ -5,18 +5,273 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>게시글 작성</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        /* contenteditable div의 스타일: 기존 textarea와 비슷하게 보이도록 */
+        #editor {
+            min-height: 150px; /* 최소 높이 */
+            overflow-y: auto; /* 내용이 넘칠 경우 스크롤바 */
+            border: 1px solid #ced4da; /* Bootstrap form-control 테두리 색상 */
+            padding: 0.375rem 0.75rem; /* Bootstrap form-control 패딩 */
+            border-radius: 0.375rem; /* Bootstrap form-control 모서리 둥글게 */
+        }
+    </style>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('category');
+        const subcategorySelect = document.getElementById('subcategory');
+        const certificateSelect = document.getElementById('certificateName');
+        
+        const initialCategory = document.getElementById('initialCategory')?.value || '';
+        const initialSubcategory = document.getElementById('initialSubcategory')?.value || '';
+        const initialCertificate = document.getElementById('initialCertificate')?.value || '';
+
+        const categoryData = {
+            "IT": {
+                "정보통신": ["정보처리기사", "정보처리산업기사"],
+                "보안": ["정보보안기사", "정보보안산업기사"]
+            },
+            "안전관리": {
+                "비파괴검사": ["비파괴검사기술사", "누설비파괴검사기사"],
+                "안전관리": ["가스기사", "건설안전기사"]
+            }
+        };
+
+        // 서브카테고리 드롭다운 업데이트 함수
+        function updateSubcategories(selectedCat, selectFirst = true) { // selectFirst 파라미터 추가
+            subcategorySelect.innerHTML = ''; // ★ '선택' 플레이스홀더 제거 ★
+            certificateSelect.innerHTML = ''; // ★ '선택' 플레이스홀더 제거 ★
+
+            let hasSubcategories = false; // 서브카테고리가 존재하는지 여부
+
+            if (selectedCat && categoryData[selectedCat]) {
+                Object.keys(categoryData[selectedCat]).forEach(sub => {
+                    const option = document.createElement('option');
+                    option.value = sub;
+                    option.textContent = sub;
+                    subcategorySelect.appendChild(option);
+                    hasSubcategories = true;
+                });
+            }
+
+            // 서브카테고리가 채워졌을 때 첫 번째 옵션 자동 선택 및 자격증 업데이트
+            if (hasSubcategories && selectFirst) {
+                subcategorySelect.value = subcategorySelect.options[0].value;
+                updateCertificates(selectedCat, subcategorySelect.value);
+            } else if (!hasSubcategories && selectFirst) {
+                // 서브카테고리가 없는 경우 자격증도 비움 (확실히 비어있도록)
+                certificateSelect.innerHTML = '';
+            }
+        }
+
+        // 자격증 드롭다운 업데이트 함수
+        function updateCertificates(selectedCat, selectedSub, selectFirst = true) { // selectFirst 파라미터 추가
+            certificateSelect.innerHTML = ''; // ★ '선택' 플레이스홀더 제거 ★
+
+            let hasCertificates = false; // 자격증이 존재하는지 여부
+
+            if (selectedCat && selectedSub && categoryData[selectedCat] && categoryData[selectedCat][selectedSub]) {
+                categoryData[selectedCat][selectedSub].forEach(cert => {
+                    const option = document.createElement('option');
+                    option.value = cert;
+                    option.textContent = cert;
+                    certificateSelect.appendChild(option);
+                    hasCertificates = true;
+                });
+            }
+
+            // 자격증이 채워졌을 때 첫 번째 옵션 자동 선택
+            if (hasCertificates && selectFirst) {
+                certificateSelect.value = certificateSelect.options[0].value;
+            }
+        }
+
+        // 초기 로드 시 드롭다운 설정
+        // 1. 카테고리 설정
+        if (initialCategory) {
+            categorySelect.value = initialCategory;
+            // initialSubcategory와 initialCertificate가 있다면, 그것들로 선택해야 하므로,
+            // updateSubcategories와 updateCertificates에서 자동 선택하지 않도록 false 전달
+            updateSubcategories(initialCategory, false);
+        } else {
+            // initialCategory가 없을 경우 (즉, 처음 글쓰기 페이지 진입 시)
+            // HTML에서 기본적으로 'IT'가 선택되도록 되어있다고 가정하고,
+            // 해당 카테고리의 서브카테고리를 채우고 첫 번째 서브카테고리 및 자격증을 자동 선택
+            updateSubcategories(categorySelect.value, true);
+        }
+
+        // 2. 서브카테고리 설정 (초기 카테고리가 설정된 후)
+        if (initialSubcategory) {
+            subcategorySelect.value = initialSubcategory;
+            // initialCertificate가 있다면, 그것으로 선택해야 하므로 자동 선택하지 않도록 false 전달
+            updateCertificates(initialCategory || categorySelect.value, initialSubcategory, false);
+        } else if (!initialCategory && subcategorySelect.options.length > 0) {
+            // initialCategory도 없고 initialSubcategory도 없지만, 서브카테고리 옵션이 채워졌다면 첫 번째 선택
+            subcategorySelect.value = subcategorySelect.options[0].value;
+            updateCertificates(categorySelect.value, subcategorySelect.value, true);
+        }
+
+        // 3. 자격증 설정 (옵션이 모두 채워진 후에 정확히 선택)
+        if (initialCertificate) {
+            certificateSelect.value = initialCertificate;
+        } else if (!initialCategory && !initialSubcategory && certificateSelect.options.length > 0) {
+            // 모든 초기값이 없고 자격증 옵션이 채워졌다면 첫 번째 선택
+            certificateSelect.value = certificateSelect.options[0].value;
+        }
+
+
+        // 이벤트 리스너 설정
+        categorySelect.addEventListener('change', function() {
+            const selectedCat = this.value;
+            updateSubcategories(selectedCat, true); // 카테고리 변경 시 서브/자격증 자동 선택
+        });
+
+        subcategorySelect.addEventListener('change', function() {
+            const selectedCat = categorySelect.value;
+            const selectedSub = this.value;
+            updateCertificates(selectedCat, selectedSub, true); // 서브카테고리 변경 시 자격증 자동 선택
+        });
+        
+        // 폼 제출 유효성 검사 로직 (드롭다운 유효성 검사도 변경)
+        const boardWriteForm = document.getElementById('boardWriteForm');
+        const titleInput = document.getElementById('title');
+        
+
+        boardWriteForm.addEventListener('submit', function(event) {
+            // 드롭다운이 비어있는지 (즉, 어떤 옵션도 선택되지 않았는지) 검사
+            // 첫 번째 옵션이 자동으로 선택되므로 이 검사는 유효성 검사가 매우 약해집니다.
+            // 예를 들어, 카테고리 드롭다운에 옵션이 하나도 없는 경우 등.
+            // 드롭다운에 실제 데이터가 항상 존재하도록 보장된다면 이 검사는 불필요할 수 있습니다.
+            if (categorySelect.options.length === 0 || categorySelect.value === '') {
+                 alert('카테고리가 비어있습니다. 관리자에게 문의하세요.'); // 이 경우는 데이터 문제일 가능성
+                 event.preventDefault();
+                 return false;
+            }
+            if (subcategorySelect.options.length === 0 || subcategorySelect.value === '') {
+                 alert('서브카테고리가 비어있습니다. 관리자에게 문의하세요.');
+                 event.preventDefault();
+                 return false;
+            }
+            if (certificateSelect.options.length === 0 || certificateSelect.value === '') {
+                 alert('자격증이 비어있습니다. 관리자에게 문의하세요.');
+                 event.preventDefault();
+                 return false;
+            }
+
+            if (!titleInput || titleInput.value.trim() === '') {
+                alert('제목을 입력해주세요.');
+                event.preventDefault();
+                return false;
+            }
+
+            // 모든 검사를 통과하면 폼 제출 허용
+        });
+        const editor = document.getElementById("editor");
+        const colorPicker = document.getElementById("colorPicker");
+        const hiddenContent = document.getElementById("hiddenContent"); // hiddenContent textarea
+
+        // colorPicker의 값이 변경될 때마다 실행되는 이벤트 리스너 (기존과 동일)
+        colorPicker.addEventListener("change", function () {
+            editor.focus();
+            document.execCommand("foreColor", false, this.value);
+        });
+
+        // keydown 이벤트 리스너 (기존과 동일, 선택 사항)
+        editor.addEventListener("keydown", function () {
+            document.execCommand("foreColor", false, colorPicker.value);
+        });
+
+        // ★★★ 이 prepareSubmit 함수가 가장 중요합니다. ★★★
+        // 폼 제출 전에 호출될 함수. window 객체에 등록하여 전역에서 접근 가능하게 합니다.
+        window.prepareSubmit = function () {
+            // 1. 제목 필드의 값을 가져와 공백을 제거합니다.
+            const title = document.querySelector('input[name="title"]').value.trim();
+
+            // 2. editor div의 현재 HTML 내용을 가져옵니다.
+            //    이 값은 <font color="...">내용</font> 형태의 HTML을 포함할 수 있습니다.
+            const editorHtmlContent = editor.innerHTML;
+
+            // 3. 유효성 검사를 위해 HTML 태그를 제거한 순수 텍스트만 추출합니다.
+            //    (예: "<font color='red'>안녕</font><br>" -> "안녕")
+            //    이 정규식은 <...> 형태의 모든 HTML 태그를 제거합니다.
+            const plainTextContent = editorHtmlContent.replace(/<[^>]*>/g, '').trim();
+
+            // --- 디버깅을 위한 콘솔 로그 (반드시 확인해주세요!) ---
+            console.log("--- prepareSubmit Debug ---");
+            console.log("editor.innerHTML (raw):", editorHtmlContent);
+            console.log("plainTextContent (for validation):", plainTextContent);
+            console.log("title:", title);
+            // ----------------------------------------------------
+
+            // 4. 제목이 비어있거나, 순수 텍스트 내용이 비어있으면 경고 메시지를 띄우고 폼 제출을 막습니다.
+            if (!title || plainTextContent === "") {
+                alert("제목과 본문을 모두 입력해주세요.");
+                // event.preventDefault()는 onsubmit="return false;"로 대체됩니다.
+                return false; // 폼 제출을 막음
+            }
+
+            // 5. 유효성 검사를 통과하면, editor div의 HTML 내용을
+            //    숨겨진 textarea (hiddenContent)의 value에 복사합니다.
+            //    이 hiddenContent가 서버로 'content' 파라미터로 전송됩니다.
+            hiddenContent.value = editorHtmlContent;
+
+            // 6. 폼 제출을 허용합니다.
+            return true;
+        };
+        
+    });
+    </script>
 </head>
 <body>
+    <input type="hidden" id="initialCategory" th:value="${selectedCategory}">
+    <input type="hidden" id="initialSubcategory" th:value="${selectedSubcategory}">
+    <input type="hidden" id="initialCertificate" th:value="${selectedCertificate}">
+
     <div class="container mt-5">
         <h2>게시글 작성</h2>
-        <form action="/board/save" method="post" enctype="multipart/form-data">
+        <form id="boardWriteForm" method="post" action="/board/save" enctype="multipart/form-data" th:object="${board}" onsubmit="return prepareSubmit();">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="category">카테고리:</label>
+                    <select name="category" id="category" class="form-select" th:field="*{category}">
+    					<option th:each="cat : ${categories}"
+            					th:value="${cat}"
+            					th:text="${cat}">
+    					</option>
+					</select>
+                    <div class="text-danger" th:if="${#fields.hasErrors('category')}" th:errors="*{category}"></div>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="subcategory">서브카테고리:</label>
+                    <select name="subcategory" id="subcategory" class="form-select" th:field="*{subcategory}">
+    				</select>
+                    <div class="text-danger" th:if="${#fields.hasErrors('subcategory')}" th:errors="*{subcategory}"></div>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="certificateName">자격증:</label>
+                    <select id="certificateName" name="certificateName" class="form-select" th:field="*{certificateName}"> 
+    				</select>
+                    <div class="text-danger" th:if="${#fields.hasErrors('certificateName')}" th:errors="*{certificateName}"></div>
+                </div>
+            </div>
+            
             <div class="mb-3">
                 <label for="title" class="form-label">제목</label>
-                <input type="text" class="form-control" id="title" name="title" required>
+                <input type="text" class="form-control" id="title" name="title" required th:field="*{title}">
+                <div class="text-danger" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></div>
             </div>
             <div class="mb-3">
-                <label for="content" class="form-label">내용</label>
-                <textarea class="form-control" id="content" name="content" rows="3" required></textarea>
+                <label for="editor" class="form-label">본문</label><br>
+                <div id="editor" contenteditable="true"></div>
+
+                <textarea name="content" id="hiddenContent" style="display:none;"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="colorPicker" class="form-label">글자 색상 선택:</label>
+                <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color">
             </div>
             <div class="mb-3">
                 <label for="image" class="form-label">이미지</label>
