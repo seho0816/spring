@@ -21,6 +21,9 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     // 게시글 ID로 검색
     Optional<Board> findById(Long id);
     
+    // 모든 게시글 검색(조건없음)
+    List<Board> findAll();
+    
     // 게시글 삭제
     void deleteById(Long id);
 }

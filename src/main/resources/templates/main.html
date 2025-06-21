@@ -125,28 +125,7 @@
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <i class="fas fa-certificate text-primary me-2 fs-4"></i>
-                <span class="fw-bold">자격증 포털</span>
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link me-3" href="/board/list.html">
-                    <i class="fas fa-users me-1"></i>커뮤니티
-                </a>
-                <th:block th:if="${session.user != null}">
-                <a class="nav-link me-3" href="/dashboard">
-                    <i class="fas fa-user me-1"></i>마이페이지
-                </a>
-            </th:block>
-            <th:block th:if="${session.user == null}">
-                <a class="nav-link me-3" href="/login">
-                    <i class="fas fa-sign-in-alt me-1"></i>로그인
-                </a>
-            </div>
-        </div>
-    </nav>
+<div th:replace="~{fragments/header :: header}"></div>
     <section class="container my-5">
         <div class="row g-4">
             <!-- 자격증 카드 예시 -->
@@ -176,9 +155,10 @@
                 <a href="#" class="btn-details" 
    th:attr="data-category=${cert.category}, data-subcategory=${cert.subCategory}, data-certificatename=${cert.certificateName}" 
    onclick="redirectToBoard(this)">게시판 -></a>
-            </div>
-        </div>
-    </div>
+	            </div>
+	        </div>
+	    </div>
+	</div>
 </div>
         
     </section>

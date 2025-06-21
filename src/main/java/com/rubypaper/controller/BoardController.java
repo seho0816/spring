@@ -9,7 +9,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,42 +66,59 @@ public class BoardController {
 	            @RequestParam(value = "selectedCertificate", required = false) String selectedCertificateFromForm, // 폼 제출 시 (필수 아님)
 	            Model model) {
 
-	        // 자격증 이름 결정(폼으로 넘긴게 일단 우선임)
-	        String finalCertificateName = null;
-	        if (selectedCertificateFromForm != null && !selectedCertificateFromForm.isEmpty()) {
-	            finalCertificateName = selectedCertificateFromForm;
-	        } else if (certificateNameFromUrl != null && !certificateNameFromUrl.isEmpty()) {
-	            finalCertificateName = certificateNameFromUrl;
-	        }
-	        
-	        if (finalCertificateName == null) {
-	        	finalCertificateName = "정보처리기사"; // 자격증 기본 값
-	        }
+	    	List<Board> boards;
 
+	        // ★★★ 모든 게시글을 조회하는 조건 추가 ★★★
+	        // 만약 category, subcategory, certificateName 파라미터가 모두 없으면 모든 게시글 조회
+	        if ((category == null || category.isEmpty()) &&
+	            (subcategory == null || subcategory.isEmpty()) &&
+	            (certificateNameFromUrl == null || certificateNameFromUrl.isEmpty()) &&
+	            (selectedCertificateFromForm == null || selectedCertificateFromForm.isEmpty())) {
 
-	        // boardService.getCertificatesForCategoryAndSubcategory는 BoardService에 정의되어 있어야 함
-	        List<Certificate> certificates = boardService.getCertificatesForCategoryAndSubcategory(category, subcategory);
-	        model.addAttribute("certificates", certificates);
+	            boards = boardService.getAllBoards(); // 모든 게시글 조회
+	            model.addAttribute("selectedCategory", null); // 모든 게시글을 볼 때 필터가 없음을 나타냄
+	            model.addAttribute("selectedSubcategory", null);
+	            model.addAttribute("selectedCertificate", null);
+	            model.addAttribute("subcategories", new ArrayList<String>()); // 빈 리스트
+	            model.addAttribute("certificates", new ArrayList<Certificate>()); // 빈 리스트
 
-	        // 모델에 카테고리, 서브카테고리, 최종 자격증 정보를 추가 (Thymeleaf에서 사용)
-	        model.addAttribute("selectedCategory", category);
-	        model.addAttribute("selectedSubcategory", subcategory);
-	        model.addAttribute("selectedCertificate", finalCertificateName); // ★finalCertificateName 사용
-
-	        // BoardService.getSubcategoriesForCategory는 BoardService에 정의되어 있어야 함
-	        List<String> subcategories = boardService.getSubcategoriesForCategory(category);
-	        model.addAttribute("subcategories", subcategories);
-
-	        List<Board> boards;
-	        if (finalCertificateName != null && !finalCertificateName.isEmpty()) {
-	            boards = boardService.getBoardsByCategorySubcategoryAndCertificate(category, subcategory, finalCertificateName);
 	        } else {
-	            // 자격증 정보가 없을 경우, 카테고리/서브카테고리만으로 게시글을 조회하거나 빈 목록을 반환
-	            boards = boardService.getBoardsByCategoryAndSubcategory(category, subcategory);
+	            // 기존 필터링 로직 유지
+	            String finalCertificateName = null;
+	            if (selectedCertificateFromForm != null && !selectedCertificateFromForm.isEmpty()) {
+	                finalCertificateName = selectedCertificateFromForm;
+	            } else if (certificateNameFromUrl != null && !certificateNameFromUrl.isEmpty()) {
+	                finalCertificateName = certificateNameFromUrl;
+	            }
+
+	            // category나 subcategory가 null/empty일 경우 기본값 설정 (기존 listBoards 로직에 따름)
+	            // 예를 들어, category가 null이면 "IT"로 간주하거나, 이 부분을 `boardService`에서 처리하도록 할 수 있습니다.
+	            // 현재 코드에서는 category, subcategory가 null일 때 getSubcategoriesForCategory, getCertificatesForCategoryAndSubcategory 호출 시 NPE 발생 가능성 있음
+	            // 따라서 기본값 처리를 강화합니다.
+	            String effectiveCategory = (category != null && !category.isEmpty()) ? category : "IT"; // 기본 카테고리
+	            String effectiveSubcategory = (subcategory != null && !subcategory.isEmpty()) ? subcategory : "정보통신"; // 기본 서브카테고리 (IT-정보통신)
+	            String effectiveCertificateName = (finalCertificateName != null && !finalCertificateName.isEmpty()) ? finalCertificateName : "정보처리기사"; // 기본 자격증
+
+	            List<Certificate> certificates = boardService.getCertificatesForCategoryAndSubcategory(effectiveCategory, effectiveSubcategory);
+	            model.addAttribute("certificates", certificates);
+
+	            model.addAttribute("selectedCategory", effectiveCategory);
+	            model.addAttribute("selectedSubcategory", effectiveSubcategory);
+	            model.addAttribute("selectedCertificate", effectiveCertificateName);
+
+	            List<String> subcategories = boardService.getSubcategoriesForCategory(effectiveCategory);
+	            model.addAttribute("subcategories", subcategories);
+
+
+	            if (effectiveCertificateName != null && !effectiveCertificateName.isEmpty()) {
+	                boards = boardService.getBoardsByCategorySubcategoryAndCertificate(effectiveCategory, effectiveSubcategory, effectiveCertificateName);
+	            } else {
+	                boards = boardService.getBoardsByCategoryAndSubcategory(effectiveCategory, effectiveSubcategory);
+	            }
 	        }
 	        model.addAttribute("boards", boards);
 
-	        return "board/list"; // 게시판 목록 페이지
+	        return "board/list";
 	    }
     // 게시글 상세 페이지
 	    @GetMapping("/{id}")
@@ -251,6 +270,143 @@ public class BoardController {
 
             model.addAttribute("board", new Board());
             return "board/write";
+        }
+     // 게시글 수정 폼 요청 처리 (GET)
+        @GetMapping("/modify/{id}")
+        public String modifyBoardForm(@PathVariable Long id, Model model, HttpSession session) {
+            // 1. 게시글 조회
+            Board board = boardService.getBoardById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + id));
+
+            // 2. 로그인된 사용자 확인 (세션에서 가져옴)
+            User loggedInUser = (User) session.getAttribute("user");
+            String loggedInUserid = (loggedInUser != null) ? loggedInUser.getUserid() : null;
+
+            
+            if (loggedInUserid == null) {
+                // 로그인되어 있지 않으면 로그인 페이지로 리다이렉트
+                // 메시지를 전달하여 로그인 후 다시 시도하도록 유도할 수 있음
+                return "redirect:/login?redirectUrl=/board/modify/" + id; // 로그인 후 다시 수정 페이지로 오도록
+            }
+            
+            if (!loggedInUserid.equals(board.getUser().getUserid())) {
+                // 작성자가 아닌 경우
+                return "redirect:/board/" + id + "?error=notAuthor"; // 상세 페이지로 리다이렉트하며 에러 전달
+            }
+            
+
+            // 모델에 게시글 정보 추가 (폼에 미리 채워 넣기 위함)
+            model.addAttribute("board", board);
+            List<String> allCategories = Arrays.asList("IT", "안전관리");
+            
+            Map<String, List<String>> allSubcategoriesMap = new HashMap<>();
+            allSubcategoriesMap.put("IT", Arrays.asList("정보통신", "보안"));
+            allSubcategoriesMap.put("안전관리", Arrays.asList("비파괴검사", "안전관리"));
+
+            Map<String, List<String>> allCertificatesMap = new HashMap<>();
+            allCertificatesMap.put("정보통신", Arrays.asList("정보처리기사", "정보처리산업기사"));
+            allCertificatesMap.put("보안", Arrays.asList("정보보안기사", "정보보안산업기사"));
+            allCertificatesMap.put("비파괴검사", Arrays.asList("비파괴검사기술사", "누설비파괴검사기사"));
+            allCertificatesMap.put("안전관리", Arrays.asList("가스기사", "건설안전기사")); // "가스기사", "건설안전기사"
+
+            model.addAttribute("allCategories", allCategories); // 전체 카테고리 리스트
+            model.addAttribute("allSubcategoriesMap", allSubcategoriesMap); // 전체 서브카테고리 맵
+            model.addAttribute("allCertificatesMap", allCertificatesMap); // 전체 자격증 맵
+
+
+            // 현재 선택된 값들도 계속 모델에 추가
+            model.addAttribute("selectedCategory", board.getCategory());
+            model.addAttribute("selectedSubcategory", board.getSubcategory());
+            model.addAttribute("selectedCertificate", board.getCertificateName());
+
+            // 초기 로드 시 드롭다운 값 채우기 (현재 게시글의 카테고리/서브카테고리에 맞는 리스트만)
+            List<String> currentSubcategories = new ArrayList<>();
+            List<String> currentCertificates = new ArrayList<>();
+
+            if (board.getCategory() != null) {
+                currentSubcategories = allSubcategoriesMap.getOrDefault(board.getCategory(), new ArrayList<>());
+                if (board.getSubcategory() != null) {
+                    currentCertificates = allCertificatesMap.getOrDefault(board.getSubcategory(), new ArrayList<>());
+                }
+            }
+            model.addAttribute("subcategories", currentSubcategories); // 현재 선택된 카테고리에 맞는 서브카테고리
+            model.addAttribute("certificates", currentCertificates); // 현재 선택된 서브카테고리에 맞는 자격증
+
+            return "board/modify";
+        }
+
+        // 게시글 수정 처리 (POST) - updateBoard 메서드도 권한 검사 로직 그대로 유지
+        @PostMapping("/update")
+        public String updateBoard(@ModelAttribute Board board,
+                                  @RequestParam("image") MultipartFile imageFile,
+                                  @RequestParam(value = "deleteImage", required = false) String deleteImage,
+                                  HttpSession session) throws Exception {
+
+            User loggedInUser = (User) session.getAttribute("user");
+            String loggedInUserid = (loggedInUser != null) ? loggedInUser.getUserid() : null;
+
+            if (loggedInUserid == null) {
+                return "redirect:/login"; // 로그인 안 된 경우 로그인 페이지로 리다이렉트
+            }
+
+            Board existingBoard = boardService.getBoardById(board.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + board.getId()));
+            
+            // 작성자 체크
+            if (!loggedInUserid.equals(existingBoard.getUser().getUserid())) {
+                return "redirect:/board/" + board.getId() + "?error=noPermissionToUpdate";
+            }
+            
+            // 이미지 처리 로직
+            if ("true".equals(deleteImage) && existingBoard.getImagePath() != null) {
+                try {
+                    String imageFileName = existingBoard.getImagePath().substring(uploadUrl.length());
+                    Path filePath = Paths.get(uploadDir, imageFileName);
+                    Files.deleteIfExists(filePath);
+                    existingBoard.setImagePath(null);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.err.println("ERROR (updateBoard): Failed to delete old image: " + existingBoard.getImagePath());
+                }
+            }
+
+            if (!imageFile.isEmpty()) {
+                if (existingBoard.getImagePath() != null) {
+                    try {
+                        String imageFileName = existingBoard.getImagePath().substring(uploadUrl.length());
+                        Path filePath = Paths.get(uploadDir, imageFileName);
+                        Files.deleteIfExists(filePath);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        System.err.println("ERROR (updateBoard): Failed to delete previous image for replacement: " + existingBoard.getImagePath());
+                    }
+                }
+
+                File uploadPath = new File(uploadDir);
+                if (!uploadPath.exists()) {
+                    uploadPath.mkdirs();
+                }
+                String originalFilename = imageFile.getOriginalFilename();
+                String fileExtension = "";
+                if (originalFilename != null && originalFilename.contains(".")) {
+                    fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                }
+                String savedFileName = UUID.randomUUID().toString() + fileExtension;
+                File dest = new File(uploadPath, savedFileName);
+                imageFile.transferTo(dest);
+                String webAccessPath = uploadUrl + savedFileName;
+                existingBoard.setImagePath(webAccessPath);
+            }
+
+            existingBoard.setTitle(board.getTitle());
+            existingBoard.setContent(board.getContent());
+            existingBoard.setCategory(board.getCategory());
+            existingBoard.setSubcategory(board.getSubcategory());
+            existingBoard.setCertificateName(board.getCertificateName());
+
+            boardService.updateBoard(existingBoard);
+
+            return "redirect:/board/" + board.getId();
         }
         
         @PostMapping("/delete/{id}")
