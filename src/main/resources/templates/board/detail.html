@@ -6,43 +6,152 @@
     <title th:text="${board.title} + ' - 게시글 상세'"></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 기본 레이아웃 스타일 */
+        body { padding-bottom: 50px; } /* 푸터 공간 확보 (있다면) */
+        .container { max-width: 900px; } /* 컨테이너 최대 너비 */
+
+        /* 게시글 내용 카드 스타일 */
+        .board-content-card {
+            border: 1px solid #dee2e6; /* Bootstrap card border */
+            border-radius: .25rem; /* Bootstrap card border-radius */
+            background-color: #e9ecef; /* 약간 회색 배경 */
+            padding: 1.5rem; /* 내부 여백 */
+            min-height: 200px; /* 최소 높이 */
+            word-wrap: break-word; /* 긴 단어 줄바꿈 */
+            white-space: pre-wrap; /* 공백 및 줄바꿈 유지 */
+            overflow-x: auto; /* 내용이 넘칠 경우 가로 스크롤 */
+        }
+
+        /* 댓글 섹션 스타일 */
+        .comment-section {
+            margin-top: 40px;
+            border-top: 1px solid #eee; /* 댓글 섹션 상단 구분선 */
+            padding-top: 20px;
+        }
+        .comment-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa; /* 댓글 배경색 */
+        }
+        .comment-meta {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 5px;
+            display: flex; /* 요소들을 한 줄에 정렬 */
+            align-items: center; /* 세로 중앙 정렬 */
+        }
+        .comment-author-badge {
+            background-color: #28a745; /* Green */
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-left: 8px; /* 작성자 이름과의 간격 */
+        }
+        .comment-meta span.date {
+            margin-left: auto; /* 날짜를 오른쪽으로 밀어냅니다 */
+            color: #888;
+        }
+        .comment-form textarea {
+            resize: vertical; /* 세로 크기 조절 가능 */
+            min-height: 80px;
+        }
+    </style>
 </head>
 
 <body>
-<script>
-        function checkEditPermission(boardId, boardAuthorId, loggedInUserId) {
-            // 로그인되어 있지 않은 경우
-            if (loggedInUserId === null || loggedInUserId === '') {
+    <script th:inline="javascript">
+        const boardId = /*[[${board.id}]]*/ -1;
+        const boardAuthorId = /*[[${board.user?.userid}]]*/ null; // 게시글 작성자 ID
+        const loggedInUserid = /*[[${loggedInUserid}]]*/ null; // 로그인된 사용자 ID (세션에서 가져옴)
+
+        const isAdminUser = (loggedInUserid !== null && loggedInUserid === '11');
+        
+        function checkEditPermission() {
+            if (loggedInUserid === null || loggedInUserid === '') {
                 alert('로그인 후 수정할 수 있습니다.');
-                window.location.href = '/login'; // 로그인 페이지로 리다이렉트
+                window.location.href = '/login';
                 return false;
             }
-	
-
-            // 작성자가 아닌 경우
-            if (loggedInUserId !== boardAuthorId) {
+            if (loggedInUserid !== boardAuthorId) {
                 alert('작성자만 게시글을 수정할 수 있습니다.');
                 return false;
             }
-
-            // 모든 조건을 통과하면 수정 페이지로 이동
             window.location.href = '/board/modify/' + boardId;
             return true;
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const successMessage = /*[[${successMessage}]]*/ null;
+            const errorMessage = /*[[${errorMessage}]]*/ null;
+
+            if (successMessage) {
+                alert(successMessage);
+            }
+            if (errorMessage) {
+                alert(errorMessage);
+            }
+
+            const deleteButton = document.getElementById('deleteButton');
+            if (deleteButton) {
+                deleteButton.addEventListener('click', function() {
+                    if (loggedInUserid === null || loggedInUserid === '') {
+                        alert('로그인한 사용자만 삭제할 수 있습니다.');
+                        return;
+                    }
+                    if (!isAdminUser && loggedInUserid !== boardAuthorId) {
+                        alert('작성자 또는 관리자만 게시글을 삭제할 수 있습니다.'); // 메시지도 더 정확하게
+                        return;
+                    }
+
+                    if (confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+                        const form = document.createElement('form');
+                        form.action = '/board/delete/' + boardId;
+                        form.method = 'post';
+                        
+                        const currentCategory = /*[[${board.category}]]*/ '';
+                        const currentSubcategory = /*[[${board.subcategory}]]*/ '';
+                        const currentCertificateName = /*[[${board.certificateName}]]*/ '';
+
+                        const categoryInput = document.createElement('input');
+                        categoryInput.type = 'hidden'; categoryInput.name = 'category'; categoryInput.value = currentCategory; form.appendChild(categoryInput);
+                        const subcategoryInput = document.createElement('input');
+                        subcategoryInput.type = 'hidden'; subcategoryInput.name = 'subcategory'; subcategoryInput.value = currentSubcategory; form.appendChild(subcategoryInput);
+                        const certificateNameInput = document.createElement('input');
+                        certificateNameInput.type = 'hidden'; certificateNameInput.name = 'selectedCertificate'; certificateNameInput.value = currentCertificateName; form.appendChild(certificateNameInput);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('error') && urlParams.get('error') === 'noPermission') {
+                alert('이 게시글을 삭제할 권한이 없습니다.');
+            } else if (urlParams.has('error') && urlParams.get('error') === 'notLoggedIn') {
+                alert('로그인 후 삭제할 수 있습니다.');
+            }
+        });
     </script>
-<div th:replace="~{fragments/header :: header}"></div>
+
+    <div th:replace="~{fragments/header :: header}"></div>
     <div class="container mt-5">
-        <h2 th:text="${board.title}">게시글 제목</h2>
+        <h2 class="mb-4" th:text="${board.title}">게시글 제목</h2>
         <hr>
-        <div class="row mb-3">
+        <div class="row mb-3 text-muted">
             <div class="col-md-6">
-                <p><strong>작성자:</strong> <span th:text="${board.user.userid}">작성자ID</span></p>
+                <p><strong>작성자:</strong> <span th:text="${board.user.name}">작성자이름</span></p>
             </div>
             <div class="col-md-6 text-md-end">
                 <p><strong>작성일:</strong> <span th:text="${#temporals.format(board.createdDate, 'yyyy-MM-dd HH:mm')}">2023-01-01 12:00</span></p>
+                <span class="ms-3"><strong>조회수:</strong> <span th:text="${board.viewcount}">0</span></span>
             </div>
         </div>
-        <div class="row mb-3">
+        <div class="row mb-4 text-muted">
             <div class="col-md-4">
                 <p><strong>카테고리:</strong> <span th:text="${board.category}">IT</span></p>
             </div>
@@ -53,93 +162,69 @@
                 <p><strong>자격증:</strong> <span th:text="${board.certificateName}">정보처리기사</span></p>
             </div>
         </div>
-        <div class="mb-3">
-    <p><strong>내용:</strong></p>
-    <div class="card p-3">
-        <div th:utext="${board.content}"></div> <img th:if="${board.imagePath != null and board.imagePath != ''}"
-             th:src="@{${board.imagePath}}"
-             alt="첨부 이미지"
-             class="img-fluid mt-3"
-             style="max-width: 500px;">
-    </div>
-</div>
-<div class="mt-4">
-<a th:href="@{/main}" class="btn btn-secondary">목록으로</a>
 
-			<a href="#"
-               th:onclick="checkEditPermission([[${board.id}]], [[${board.user?.userid}]], [[${loggedInUserid}]])"
-               class="btn btn-primary me-2">수정</a>
+        <div class="mb-5">
+            <p><strong>내용:</strong></p>
+            <div class="board-content-card">
+                <div th:utext="${board.content}"></div>
+                <img th:if="${board.imagePath != null and board.imagePath != ''}"
+                     th:src="@{${board.imagePath}}"
+                     alt="첨부 이미지"
+                     class="img-fluid mt-3 rounded"
+                     style="max-width: 100%; height: auto; display: block; margin-left: auto; margin-right: auto;">
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <a th:href="@{/main}" class="btn btn-secondary">목록으로</a>
+            <div>
+                <a href="#"
+                   th:onclick="checkEditPermission()"
+                   class="btn btn-primary me-2">수정</a>
                 
-                 <button type="button" class="btn btn-danger" id="deleteButton">
-                     삭제
-                 </button>
-            
-
+                <button type="button" class="btn btn-danger" id="deleteButton">
+                    삭제
+                </button>
             </div>
-    </div>
+        </div>
 
-        <div class="mt-4">
-           
+        <div class="comment-section">
+            <h4 class="mb-3">댓글 (<span th:text="${comments.size()}">0</span>)</h4>
+
+            <div th:if="${loggedInUserid != null and loggedInUserid != ''}" class="comment-form mb-4">
+                <h5>새 댓글 작성</h5>
+                <form th:action="@{/board/{boardId}/comment(boardId=${board.id})}" method="post">
+                    <div class="mb-3">
+                        <textarea class="form-control" name="content" rows="3" placeholder="댓글을 입력하세요." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">댓글 등록</button>
+                </form>
             </div>
+            <div th:unless="${loggedInUserid != null and loggedInUserid != ''}" class="alert alert-info text-center" role="alert">
+                댓글을 작성하려면 <a th:href="@{/login}">로그인</a> 해주세요.
+            </div>
+
+            <div class="comment-list">
+                <div th:each="comment : ${comments}" class="comment-box">
+                    <div class="comment-meta">
+                        <strong th:text="${comment.user.name}">댓글 작성자명</strong>
+                        <span th:if="${comment.user.userid == board.user.userid}" class="comment-author-badge">작성자</span>
+                        <span th:text="${#temporals.format(comment.createdDate, 'yyyy-MM-dd HH:mm')}" class="date">작성일시</span>
+                    </div>
+                    <p th:text="${comment.content}" class="mb-2"></p>
+                    <div th:if="${loggedInUserid != null and loggedInUserid != '' and loggedInUserid == comment.user.userid}" class="text-end">
+                        <form th:action="@{/comment/{commentId}/delete(commentId=${comment.id})}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('정말로 이 댓글을 삭제하시겠습니까?');">삭제</button>
+                        </form>
+                    </div>
+                </div>
+                <div th:if="${comments.isEmpty()}" class="alert alert-light text-center mt-3">
+                    아직 작성된 댓글이 없습니다.
+                </div>
+            </div>
+        </div>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-   <script th:inline="javascript">
-        const boardId = /*[[${board.id}]]*/ -1;
-        const loggedInUserid = /*[[${loggedInUserid}]]*/ null; // 로그인된 사용자 ID를 JavaScript로 가져옴
-
-        const currentCategory = /*[[${board.category}]]*/ '';
-        const currentSubcategory = /*[[${board.subcategory}]]*/ '';
-        const currentCertificateName = /*[[${board.certificateName}]]*/ '';
-        
-        const deleteButton = document.getElementById('deleteButton');
-
-        if (deleteButton) {
-            deleteButton.addEventListener('click', function() {
-                // ★★★ 이 부분의 로직을 수정합니다. ★★★
-                if (loggedInUserid === null || loggedInUserid === 'null') { // loggedInUserid가 null이거나 문자열 "null"인 경우
-                    alert('로그인한 사용자만 삭제할 수 있습니다.');
-                    return; // 함수 실행을 여기서 중단합니다.
-                }
-
-                // 로그인된 경우에만 삭제 확인 메시지를 띄웁니다.
-                if (confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
-                    const form = document.createElement('form');
-                    form.action = '/board/delete/' + boardId;
-                    form.method = 'post';
-                    
-                    const categoryInput = document.createElement('input');
-                    categoryInput.type = 'hidden';
-                    categoryInput.name = 'category';
-                    categoryInput.value = currentCategory;
-                    form.appendChild(categoryInput);
-
-                    const subcategoryInput = document.createElement('input');
-                    subcategoryInput.type = 'hidden';
-                    subcategoryInput.name = 'subcategory';
-                    subcategoryInput.value = currentSubcategory;
-                    form.appendChild(subcategoryInput);
-
-                    const certificateNameInput = document.createElement('input');
-                    certificateNameInput.type = 'hidden';
-                    certificateNameInput.name = 'selectedCertificate'; // listBoards에서 이 이름으로 받음
-                    certificateNameInput.value = currentCertificateName;
-                    form.appendChild(certificateNameInput);
-                    
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        }
-
-        // 서버로부터 오는 에러 메시지 처리 (기존과 동일)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('error') && urlParams.get('error') === 'noPermission') {
-            alert('이 게시글을 삭제할 권한이 없습니다.');
-        } else if (urlParams.has('error') && urlParams.get('error') === 'notLoggedIn') {
-            
-            alert('로그인 후 삭제할 수 있습니다.');
-        }
-    </script>
 </body>
 </html>

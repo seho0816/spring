@@ -16,7 +16,10 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 // import org.springframework.validation.BindingResult; // 사용하지 않으면 제거
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,11 +30,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 // import org.springframework.web.util.UriComponentsBuilder; // 사용하지 않으면 제거
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rubypaper.domain.Board;
 import com.rubypaper.domain.Certificate;
 import com.rubypaper.domain.User;
 import com.rubypaper.service.BoardService;
+import com.rubypaper.service.CommentService;
 // import com.rubypaper.service.CertificateService; // 사용하지 않으면 제거
 import com.rubypaper.service.UserService;
 
@@ -49,6 +54,9 @@ public class BoardController {
 	 	@Autowired
 	 	private UserService userService;
 	 	
+	 	@Autowired
+	 	private CommentService commentService;
+	 	
 	    @Value("${file.upload-dir}") // 실제 파일 저장 경로
 	    private String uploadDir;
 
@@ -60,6 +68,7 @@ public class BoardController {
 	 // 게시판 목록 조회 (게시판 페이지)
 	    @GetMapping("/list")
 	    public String listBoards(
+	    		@PageableDefault(size = 5, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
 	            @RequestParam(value = "category", required = false) String category, // category는 항상 있을 것이므로 required = true (기본값)
 	            @RequestParam(value = "subcategory", required = false) String subcategory, // subcategory도 항상 있을 것이므로 required = true (기본값)
 	            @RequestParam(value = "certificateName", required = false) String certificateNameFromUrl, // URL 초기 진입 시 (필수 아님)
@@ -122,11 +131,13 @@ public class BoardController {
 	    }
     // 게시글 상세 페이지
 	    @GetMapping("/{id}")
+	    
 	    public String boardDetail(@PathVariable Long id, Model model, HttpSession session) {
 	        Board board = boardService.getBoardById(id)
 	                .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + id));
 	        model.addAttribute("board", board);
 
+	        model.addAttribute("comments", commentService.getCommentsByBoardId(id));
 
 	        User loggedInUser = (User) session.getAttribute("user");
 	        String loggedInUserid = (loggedInUser != null) ? loggedInUser.getUserid() : null; // User 객체에서 userid 추출
@@ -230,9 +241,15 @@ public class BoardController {
         public String writeForm(@RequestParam(value = "category", required = false) String category,
                                 @RequestParam(value = "subcategory", required = false) String subcategory,
                                 @RequestParam(value = "certificateName", required = false) String certificateName,
-                                Model model) {
-        	System.out.println("selectedCertificate: " + certificateName);
-            System.out.println("certificateName: " + certificateName);
+                                Model model,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+        	
+        	 User loggedInUser = (User) session.getAttribute("user");
+        	 if(loggedInUser == null) {
+        		 redirectAttributes.addFlashAttribute("errorMessage", "글 작성을 위해 로그인해주세요.");
+                 return "redirect:/login";
+        	 }
             // 기본값 설정 (카테고리, 서브카테고리, 자격증)
             List<String> categories = Arrays.asList("IT", "안전관리");
             List<String> subcategories = new ArrayList<>();
@@ -284,8 +301,7 @@ public class BoardController {
 
             
             if (loggedInUserid == null) {
-                // 로그인되어 있지 않으면 로그인 페이지로 리다이렉트
-                // 메시지를 전달하여 로그인 후 다시 시도하도록 유도할 수 있음
+                
                 return "redirect:/login?redirectUrl=/board/modify/" + id; // 로그인 후 다시 수정 페이지로 오도록
             }
             
@@ -410,31 +426,49 @@ public class BoardController {
         }
         
         @PostMapping("/delete/{id}")
-        public String deleteBoard(@PathVariable Long id, HttpSession session
-        		// 삭제 시 파라미터로 넘어오는 category, subcategory, certificateName은 현재 보고 있던 페이지의 필터 정보.
-                // 삭제될 게시글의 정보를 사용해야 함.
-                // @RequestParam(required = false) String category,
-                // @RequestParam(required = false) String subcategory,
-                // @RequestParam(required = false) String certificateName
-                ) {
-        	User loggedInUser = (User) session.getAttribute("user");
+        public String deleteBoard(@PathVariable Long id, HttpSession session) {
+
+            User loggedInUser = (User) session.getAttribute("user");
             String loggedInUserid = (loggedInUser != null) ? loggedInUser.getUserid() : null;
 
-            if (loggedInUserid == null) {
+            // ★★★ NullPointerException 방지를 위해 trim() 호출 전에 null 체크 ★★★
+            String loggedInUseridTrimmed = (loggedInUserid != null) ? loggedInUserid.trim() : null;
+
+            System.out.println("DEBUG (Controller): loggedInUserid from session (raw): '" + loggedInUserid + "'");
+            System.out.println("DEBUG (Controller): loggedInUserid after trim: '" + loggedInUseridTrimmed + "'");
+
+            // 로그인 여부 확인 (이전 코드에서 이미 있었음, 누락된 경우를 대비)
+            if (loggedInUseridTrimmed == null) { // trim()된 값으로 체크
                 return "redirect:/board/" + id + "?error=notLoggedIn";
             }
 
-            Board boardToDelete = boardService.getBoardById(id) // 삭제될 게시글 정보를 먼저 가져옴
+            Board boardToDelete = boardService.getBoardById(id)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + id));
 
-            boolean isAdmin = "11".equals(loggedInUserid); // "11"은 관리자 USERID
-            boolean isAuthor = boardToDelete.getUser() != null && boardToDelete.getUser().getUserid().equals(loggedInUserid);
+            // ★★★ isAdmin 로직에서 trim()된 값을 사용하도록 변경 ★★★
+            boolean isAdmin = "11".equals(loggedInUseridTrimmed); // "11"은 관리자 USERID
+
+            System.out.println("DEBUG (Controller): isAdmin status: " + isAdmin);
+
+            // ★★★ isAuthor 로직도 trim()된 값을 사용하도록 변경 (일관성 유지를 위해) ★★★
+            boolean isAuthor = boardToDelete.getUser() != null && boardToDelete.getUser().getUserid().equals(loggedInUseridTrimmed);
+
+            System.out.println("DEBUG (Controller): isAuthor status: " + isAuthor);
 
             if (isAdmin || isAuthor) {
-                // 이미지 파일 삭제 로직 (기존과 동일)
+                // 이미지 파일 삭제 로직
                 if (boardToDelete.getImagePath() != null && !boardToDelete.getImagePath().isEmpty()) {
                     try {
-                        String imageFileName = boardToDelete.getImagePath().substring(uploadUrl.length()); // uploadUrl을 기준으로 파일명 추출
+                        // uploadUrl이 URL 형태 (예: /images/) 이고 imagePath가 전체 URL (예: /images/abc.jpg)이라면
+                        // substring 전에 imagePath가 uploadUrl로 시작하는지 확인하는 것이 안전합니다.
+                        String imageFileName = boardToDelete.getImagePath();
+                        if (imageFileName.startsWith(uploadUrl)) {
+                             imageFileName = imageFileName.substring(uploadUrl.length());
+                        } else {
+                            // imagePath가 이미 파일명만 포함하거나 다른 경로인 경우 처리
+                            // 이 부분은 실제 파일 저장 방식에 따라 다를 수 있습니다.
+                        }
+
                         Path filePath = Paths.get(uploadDir, imageFileName);
                         Files.deleteIfExists(filePath);
                         System.out.println("DEBUG (deleteBoard): Image deleted: " + filePath.toString());
@@ -443,40 +477,38 @@ public class BoardController {
                         System.err.println("ERROR (deleteBoard): Failed to delete image: " + boardToDelete.getImagePath());
                     }
                 }
-                
+
                 // 게시글 삭제
                 boardService.deleteBoard(id);
                 System.out.println("DEBUG (deleteBoard): Board with ID " + id + " deleted successfully.");
 
-                // ★★★ 삭제된 게시글의 카테고리/서브카테고리/자격증명 정보를 사용하여 리다이렉트 URL 구성 ★★★
+                // 리다이렉트 URL 구성
                 StringBuilder redirectUrl = new StringBuilder("/board/list?");
-                
-                // 카테고리 (필수)
+
                 redirectUrl.append("category=");
                 if (boardToDelete.getCategory() != null && !boardToDelete.getCategory().isEmpty()) {
                     redirectUrl.append(URLEncoder.encode(boardToDelete.getCategory(), StandardCharsets.UTF_8));
                 } else {
-                    redirectUrl.append(URLEncoder.encode("IT", StandardCharsets.UTF_8)); // 기본값 설정 (listBoards와 일치)
+                    redirectUrl.append(URLEncoder.encode("IT", StandardCharsets.UTF_8));
                 }
                 redirectUrl.append("&");
 
-                // 서브카테고리 (필수)
                 redirectUrl.append("subcategory=");
                 if (boardToDelete.getSubcategory() != null && !boardToDelete.getSubcategory().isEmpty()) {
                     redirectUrl.append(URLEncoder.encode(boardToDelete.getSubcategory(), StandardCharsets.UTF_8));
                 } else {
-                    redirectUrl.append(URLEncoder.encode("정보통신", StandardCharsets.UTF_8)); // 기본값 설정 (listBoards와 일치)
+                    redirectUrl.append(URLEncoder.encode("정보통신", StandardCharsets.UTF_8));
                 }
                 redirectUrl.append("&");
 
-                // 자격증명 (선택적) - listBoards는 "selectedCertificate"로 받음
-                redirectUrl.append("selectedCertificate="); // ★ 파라미터 이름을 "selectedCertificate"로 변경
+                // ★★★ 파라미터 이름을 "certificateName"으로 변경해야 합니다. ★★★ (list 페이지의 @RequestParam과 일치하도록)
+                redirectUrl.append("certificateName=");
                 if (boardToDelete.getCertificateName() != null && !boardToDelete.getCertificateName().isEmpty()) {
                     redirectUrl.append(URLEncoder.encode(boardToDelete.getCertificateName(), StandardCharsets.UTF_8));
                 } else {
-                    redirectUrl.append(URLEncoder.encode("정보처리기사", StandardCharsets.UTF_8)); // 기본값 설정 (listBoards와 일치)
+                    redirectUrl.append(URLEncoder.encode("정보처리기사", StandardCharsets.UTF_8));
                 }
-                
+
                 System.out.println("DEBUG (deleteBoard): Redirecting to: " + redirectUrl.toString());
                 return "redirect:" + redirectUrl.toString();
 
