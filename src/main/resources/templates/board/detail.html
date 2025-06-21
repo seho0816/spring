@@ -68,8 +68,11 @@
         const boardAuthorId = /*[[${board.user?.userid}]]*/ null; // 게시글 작성자 ID
         const loggedInUserid = /*[[${loggedInUserid}]]*/ null; // 로그인된 사용자 ID (세션에서 가져옴)
 
+<<<<<<< HEAD
         const isAdminUser = (loggedInUserid !== null && loggedInUserid === '11');
         
+=======
+>>>>>>> 21d2c90eacaf7968b7f6b207303205cef4a5ec2e
         function checkEditPermission() {
             if (loggedInUserid === null || loggedInUserid === '') {
                 alert('로그인 후 수정할 수 있습니다.');
@@ -102,8 +105,13 @@
                         alert('로그인한 사용자만 삭제할 수 있습니다.');
                         return;
                     }
+<<<<<<< HEAD
                     if (!isAdminUser && loggedInUserid !== boardAuthorId) {
                         alert('작성자 또는 관리자만 게시글을 삭제할 수 있습니다.'); // 메시지도 더 정확하게
+=======
+                    if (loggedInUserid !== boardAuthorId) {
+                        alert('작성자만 게시글을 삭제할 수 있습니다.');
+>>>>>>> 21d2c90eacaf7968b7f6b207303205cef4a5ec2e
                         return;
                     }
 
@@ -144,7 +152,15 @@
         <hr>
         <div class="row mb-3 text-muted">
             <div class="col-md-6">
+<<<<<<< HEAD
                 <p><strong>작성자:</strong> <span th:text="${board.user.name}">작성자이름</span></p>
+=======
+<<<<<<< HEAD
+                <p><strong>작성자:</strong> <span th:text="${board.user.name}">작성자이름</span></p>
+=======
+                <p><strong>작성자:</strong> <span th:text="${board.user.name}">작성자이름</span> (<span th:text="${board.user.userid}">작성자ID</span>)</p>
+>>>>>>> 0105a79d89d79f2e239b710a956f1185e5537005
+>>>>>>> 21d2c90eacaf7968b7f6b207303205cef4a5ec2e
             </div>
             <div class="col-md-6 text-md-end">
                 <p><strong>작성일:</strong> <span th:text="${#temporals.format(board.createdDate, 'yyyy-MM-dd HH:mm')}">2023-01-01 12:00</span></p>
@@ -207,7 +223,15 @@
             <div class="comment-list">
                 <div th:each="comment : ${comments}" class="comment-box">
                     <div class="comment-meta">
+<<<<<<< HEAD
                         <strong th:text="${comment.user.name}">댓글 작성자명</strong>
+=======
+<<<<<<< HEAD
+                        <strong th:text="${comment.user.name}">댓글 작성자명</strong>
+=======
+                        <strong th:text="${comment.user.name}">댓글 작성자명</strong> <span th:text="'(' + ${comment.user.userid} + ')'" class="text-muted ms-1"></span>
+>>>>>>> 0105a79d89d79f2e239b710a956f1185e5537005
+>>>>>>> 21d2c90eacaf7968b7f6b207303205cef4a5ec2e
                         <span th:if="${comment.user.userid == board.user.userid}" class="comment-author-badge">작성자</span>
                         <span th:text="${#temporals.format(comment.createdDate, 'yyyy-MM-dd HH:mm')}" class="date">작성일시</span>
                     </div>

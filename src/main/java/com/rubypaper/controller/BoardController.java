@@ -131,7 +131,15 @@ public class BoardController {
 	    }
     // 게시글 상세 페이지
 	    @GetMapping("/{id}")
+<<<<<<< HEAD
 	    
+=======
+<<<<<<< HEAD
+	    
+=======
+	    @Transactional(readOnly = true)
+>>>>>>> 0105a79d89d79f2e239b710a956f1185e5537005
+>>>>>>> 21d2c90eacaf7968b7f6b207303205cef4a5ec2e
 	    public String boardDetail(@PathVariable Long id, Model model, HttpSession session) {
 	        Board board = boardService.getBoardById(id)
 	                .orElseThrow(() -> new IllegalArgumentException("Invalid board Id:" + id));
