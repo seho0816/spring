@@ -1,145 +1,202 @@
 package com.rubypaper.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.rubypaper.domain.Board;
 import com.rubypaper.domain.Certificate;
 import com.rubypaper.domain.User;
 import com.rubypaper.repository.BoardRepository;
 import com.rubypaper.repository.CertificateRepository;
 import com.rubypaper.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class BoardService {
-    
-    @Autowired
-    private BoardRepository boardRepository;
-    
-    @Autowired
-    private CertificateRepository certificateRepository;
-    
-    @Autowired
-    private UserRepository userRepository;
-    
-    @Autowired
-    private UserService userService;
+	
+	@Value("${file.upload-dir}")
+    private String uploadDir;
+    @Value("${file.upload-url}")
+    private String uploadUrl;
 
-    // 게시글 저장
- // 모든 게시글을 가져오는 메서드
-    public List<Board> getAllBoards() {
-        return boardRepository.findAll();
-    }
+    private final BoardRepository boardRepository;
+    private final UserRepository userRepository;
+    private final CertificateRepository certificateRepository; // CertificateRepository 주입
 
-    // 카테고리와 서브카테고리로 게시글 목록을 가져오는 메서드
-    public List<Board> getBoardsByCategoryAndSubcategory(String category, String subcategory) {
-        return boardRepository.findByCategoryAndSubcategory(category, subcategory);
-    }
-
-    // 카테고리와 서브 카테고리로 게시글 목록을 가져옴
-    public List<Board> getBoardsByCategorySubcategoryAndCertificate(String category, String subcategory, String certificateName) {
-        
-        return boardRepository.findByCategoryAndSubcategoryAndCertificateName(category, subcategory, certificateName);
-    }
-    
-    // 게시글을 ID로 찾는 메서드
-    public Optional<Board> getBoardById(Long id) {
-        return boardRepository.findById(id);
-    }
-
-    // 게시글 저장
+    // 게시글 작성
     @Transactional
-    public void save(Board board, String userId) {
-    	User user = userService.findByUserid(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+    public Long saveBoard(String title, String content, String category, String subcategory, String certificateName, String userId, MultipartFile imageFile) throws IOException {
+        User user = userRepository.findByUserid(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
 
-    			// 	User 객체를 Board 객체에 설정
-    			board.setUser(user);
-    			boardRepository.save(board); // 게시글 저장
+        String imagePath = null;
+        if (imageFile != null && !imageFile.isEmpty()) {
+            // 업로드 디렉토리가 없으면 생성
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            String originalFilename = imageFile.getOriginalFilename();
+            // 파일명 중복을 피하기 위해 UUID 추가
+            String storedFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+            Path filePath = uploadPath.resolve(storedFilename);
+            
+            // Files.copy 대신 transferTo 사용 (더 일반적으로 사용되며, InputStream 처리 불필요)
+            imageFile.transferTo(filePath.toFile());
+            
+            // ★ 여기를 수정합니다. file.upload-url에 지정된 경로를 사용합니다. ★
+            imagePath = uploadUrl + storedFilename;
+        }
+
+        Board board = Board.builder()
+                .title(title)
+                .content(content)
+                .category(category)
+                .subcategory(subcategory)
+                .certificateName(certificateName)
+                .user(user)
+                .imagePath(imagePath)
+                .build();
+
+        return boardRepository.save(board).getId();
+    }
+    
+    // 게시글 수정
+    @Transactional
+    public Board updateBoard(Long id, String title, String content, String category, String subcategory, String certificateName, MultipartFile newImageFile, boolean deleteExistingImage) throws IOException {
+        Board existingBoard = boardRepository.findById(id)
+                                .orElseThrow(() -> new EntityNotFoundException("Board not found with id: " + id));
+
+        // 작성자 필드 업데이트 방지: user 필드는 그대로 유지
+        existingBoard.setTitle(title);
+        existingBoard.setContent(content);
+        existingBoard.setCategory(category);
+        existingBoard.setSubcategory(subcategory);
+        existingBoard.setCertificateName(certificateName);
+
+        // 기존 이미지 처리 로직
+        // 1. 기존 이미지 삭제 요청이 있거나 (deleteExistingImage=true)
+        // 2. 새로운 이미지가 업로드되면서 기존 이미지를 대체해야 하는 경우
+        if ((deleteExistingImage || (newImageFile != null && !newImageFile.isEmpty()))
+             && existingBoard.getImagePath() != null && !existingBoard.getImagePath().isEmpty()) {
+            
+            // 기존 파일 삭제
+            String oldFileName = existingBoard.getImagePath().substring(uploadUrl.length()); // URL에서 파일명 추출
+            Path oldFilePath = Paths.get(uploadDir, oldFileName);
+            Files.deleteIfExists(oldFilePath);
+            existingBoard.setImagePath(null); // DB 경로도 null로 설정
+        }
+
+        // 새로운 이미지 업로드 로직
+        if (newImageFile != null && !newImageFile.isEmpty()) {
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            String originalFilename = newImageFile.getOriginalFilename();
+            String storedFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+            Path filePath = uploadPath.resolve(storedFilename);
+            newImageFile.transferTo(filePath.toFile());
+
+            existingBoard.setImagePath(uploadUrl + storedFilename); // 새 이미지 URL 저장
+        }
+
+        return boardRepository.save(existingBoard);
     }
 
     // 게시글 삭제
     @Transactional
-    public void deleteBoard(Long id) {
+    public void deleteBoard(Long id) throws IOException {
+        Board boardToDelete = boardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Board not found with id: " + id));
+
+        // 이미지 파일 삭제 로직 추가
+        if (boardToDelete.getImagePath() != null && !boardToDelete.getImagePath().isEmpty()) {
+            String imageFileName = boardToDelete.getImagePath().substring(uploadUrl.length()); // URL에서 파일명 추출
+            Path filePath = Paths.get(uploadDir, imageFileName);
+            Files.deleteIfExists(filePath);
+        }
         boardRepository.deleteById(id);
     }
-    
-    public List<String> getSubcategoriesForCategory(String category) {
-        // 카테고리에 맞는 서브카테고리 목록을 반환
-        List<String> subcategories = new ArrayList<>();
 
-        if ("IT".equals(category)) {
-            subcategories.add("정보통신");
-            subcategories.add("보안");
-        } else if ("안전관리".equals(category)) {
-            subcategories.add("비파괴검사");
-            subcategories.add("가스기사");
-        } else {
-            subcategories.add("기타");
-        }
+    public List<String> getAllCategories() {
+        return certificateRepository.findAllCategories();
+    }
 
-        return subcategories;
+    public List<String> getSubcategoriesByCategory(String category) {
+        return certificateRepository.findSubcategoriesByCategory(category);
+    }
+
+    public List<Certificate> getAllCertificates() {
+        return certificateRepository.findAll();
     }
     
-    public List<Certificate> getCertificatesForCategoryAndSubcategory(String category, String subcategory) {
-        List<Certificate> certificates = new ArrayList<>();
-        
-        // 카테고리와 서브카테고리 조건에 맞는 자격증 리스트를 가져옴
-        if ("IT".equals(category)) {
-            if ("정보통신".equals(subcategory)) {
-                certificates.add(new Certificate("정보처리기사", "IT", "정보통신"));
-                certificates.add(new Certificate("정보보안기사", "IT", "정보통신"));
-            } else if ("보안".equals(subcategory)) {
-                certificates.add(new Certificate("정보보안기사", "IT", "보안"));
-                certificates.add(new Certificate("정보보안산업기사", "IT", "보안"));
-            }
-        } else if ("안전관리".equals(category)) {
-            if ("비파괴검사".equals(subcategory)) {
-                certificates.add(new Certificate("비파괴검사기술사", "안전관리", "비파괴검사"));
-                certificates.add(new Certificate("누설비파괴검사기사", "안전관리", "비파괴검사"));
-            } else if ("안전관리".equals(subcategory)) {
-                certificates.add(new Certificate("가스기사", "안전관리", "안전관리"));
-                certificates.add(new Certificate("건설안전기사", "안전관리", "안전관리"));
-            }
-        }
-
-        // 그 외 다른 카테고리와 서브카테고리도 처리 가능
-        return certificates;
+    public List<Certificate> getCertificatesByCategoryAndSubcategory(String category, String subcategory) {
+        return certificateRepository.findByCategoryAndSubCategory(category, subcategory);
     }
+
+    public List<Certificate> getCertificatesByCategory(String category) {
+        return certificateRepository.findByCategory(category);
+    }
+
+
+    // 단일 게시글 조회 및 조회수 증가
     @Transactional
-    public void updateBoard(Board board) {
-        // ID를 가진 기존 게시글을 찾습니다.
-        Optional<Board> existingBoardOptional = boardRepository.findById(board.getId());
-        if (existingBoardOptional.isPresent()) {
-            Board existingBoard = existingBoardOptional.get();
+    public Board getBoardById(Long id) {
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Board not found with id: " + id));
+        board.increaseViewcount(); // 조회수 증가
+        return board;
+    }
 
-            // 폼에서 넘어온 데이터로 기존 게시글의 필드를 업데이트합니다.
-            existingBoard.setTitle(board.getTitle());
-            existingBoard.setContent(board.getContent());
-            existingBoard.setCategory(board.getCategory());
-            existingBoard.setSubcategory(board.getSubcategory());
-            existingBoard.setCertificateName(board.getCertificateName());
-            existingBoard.setImagePath(board.getImagePath()); // 이미지 경로도 업데이트
+    // 게시글 목록 조회 (필터링 및 페이징)
+    public Page<Board> getBoards(String category, String subCategory, String certificateName, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
 
-            System.out.println("DEBUG (Service) - Board ID from form: " + board.getId());
-            System.out.println("DEBUG (Service) - Board Title from form: " + board.getTitle());
-            System.out.println("DEBUG (Service) - Board Content from form: " + board.getContent());
-            System.out.println("---");
-            System.out.println("DEBUG (Service) - existingBoard ID BEFORE save: " + existingBoard.getId());
-            System.out.println("DEBUG (Service) - existingBoard Title BEFORE save: " + existingBoard.getTitle());
-            System.out.println("DEBUG (Service) - existingBoard Content BEFORE save: " + existingBoard.getContent());
-            System.out.println("--- Attempting to save existingBoard ---");
-            // save 메서드는 엔티티가 이미 존재하면 업데이트, 없으면 삽입을 수행합니다.
-            boardRepository.save(existingBoard);
+        if (category != null && !category.isEmpty()) {
+            if (subCategory != null && !subCategory.isEmpty()) {
+                if (certificateName != null && !certificateName.isEmpty()) {
+                    // 카테고리, 서브카테고리, 자격증명 모두 필터링
+                    return boardRepository.findByCategoryAndSubcategoryAndCertificateNameContaining(category, subCategory, certificateName, pageable);
+                } else {
+                    // 카테고리, 서브카테고리 필터링
+                    return boardRepository.findByCategoryAndSubcategoryContaining(category, subCategory, pageable);
+                }
+            } else if (certificateName != null && !certificateName.isEmpty()) {
+                // 카테고리, 자격증명 필터링 (서브카테고리 전체)
+                return boardRepository.findByCategoryAndCertificateNameContaining(category, certificateName, pageable);
+            } else {
+                // 카테고리만 필터링
+                return boardRepository.findByCategoryContaining(category, pageable);
+            }
+        } else if (certificateName != null && !certificateName.isEmpty()) {
+            // 자격증명만 필터링 (카테고리, 서브카테고리 전체)
+            return boardRepository.findByCertificateNameContaining(certificateName, pageable);
         } else {
-            throw new IllegalArgumentException("Invalid board Id: " + board.getId() + " for update operation.");
+            // 필터링 없음
+            return boardRepository.findAll(pageable);
         }
     }
-}
 
+}

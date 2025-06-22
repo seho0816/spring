@@ -2,290 +2,195 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>게시글 수정</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .preview-image {
-            max-width: 200px;
-            max-height: 200px;
-            margin-top: 10px;
-            border: 1px solid #ddd;
+        #editor {
+            min-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
         }
     </style>
 </head>
 <body>
-    <div th:replace="~{fragments/header :: header}"></div>
-
-    <div class="container mt-4">
-        <h1>게시글 수정</h1>
-        <hr>
-        <form th:action="@{/board/update}" th:object="${board}" method="post" enctype="multipart/form-data" onsubmit="return prepareModifySubmit();">
-            <input type="hidden" th:field="*{id}">
-
-            <div class="mb-3">
-                <label for="category" class="form-label">카테고리:</label>
-                <select id="category" th:field="*{category}" class="form-select" onchange="updateSubcategories()">
-                    <option value="">카테고리 선택</option>
-                    <option th:each="cat : ${allCategories}" th:value="${cat}" th:text="${cat}"
-                            th:selected="${selectedCategory != null and selectedCategory == cat}">
-                    </option>
+<div th:replace="~{fragments/header :: header}"></div>
+<div class="container mt-5">
+    <h2>게시글 수정</h2>
+    <form id="boardModifyForm" method="post" action="/board/update" enctype="multipart/form-data" th:object="${board}">
+        <input type="hidden" name="id" th:field="*{id}">
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="category">카테고리:</label>
+                <select id="category" name="category" class="form-select" th:field="*{category}">
+                    <option value="">-- 카테고리 선택 --</option>
+                    <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}"></option>
                 </select>
             </div>
-
-            <div class="mb-3">
-                <label for="subcategory" class="form-label">서브카테고리:</label>
-                <select id="subcategory" th:field="*{subcategory}" class="form-select" onchange="updateCertificates()">
-                    <option value="">서브카테고리 선택</option>
-                    <th:block th:if="${subcategories != null}">
-                        <option th:each="sub : ${subcategories}" th:value="${sub}" th:text="${sub}"
-                                th:selected="${selectedSubcategory != null and selectedSubcategory == sub}">
-                        </option>
-                    </th:block>
+            <div class="col-md-3">
+                <label for="subcategory">서브카테고리:</label>
+                <select id="subcategory" name="subcategory" class="form-select" th:field="*{subcategory}">
+                    <option value="">-- 서브카테고리 선택 --</option>
                 </select>
             </div>
-
-            <div class="mb-3">
-                <label for="certificateName" class="form-label">자격증명:</label>
-                <select id="certificateName" th:field="*{certificateName}" class="form-select">
-			    <option value="">자격증명 선택</option>
-			    <th:block th:if="${certificates != null}">
-			        <option th:each="cert : ${certificates}"
-                			th:value="${cert}" th:text="${cert}"  th:selected="${selectedCertificate != null and selectedCertificate == cert}"> </option>
-    </th:block>
-</select>
+            <div class="col-md-3">
+                <label for="certificateName">자격증:</label>
+                <select id="certificateName" name="certificateName" class="form-select" th:field="*{certificateName}">
+                    <option value="">-- 자격증 선택 --</option>
+                </select>
             </div>
+        </div>
 
-            <div class="mb-3">
-                <label for="title" class="form-label">제목:</label>
-                <input type="text" id="title" th:field="*{title}" class="form-control" required>
+        <div class="mb-3">
+            <label for="title" class="form-label">제목:</label>
+            <input type="text" class="form-control" id="title" name="title" required th:field="*{title}">
+        </div>
+
+        <div class="mb-3">
+            <label for="editor" class="form-label">본문:</label><br>
+            <div id="editor" contenteditable="true"></div>
+            <input type="hidden" name="content" id="hiddenContent" th:field="*{content}">
+        </div>
+
+        <div class="mb-3">
+            <label for="colorPicker" class="form-label">글자 색상 선택:</label>
+            <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color">
+        </div>
+
+        <div class="mb-3">
+            <label for="image" class="form-label">이미지</label>
+            <input type="file" class="form-control" id="image" name="image">
+            <img id="currentImagePreview" th:if="${board.imagePath != null}" th:src="@{${board.imagePath}}" style="max-width: 200px; display:block;">
+            <img id="imagePreview" style="max-width: 200px; display:none;">
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="deleteImage" name="deleteImage">
+                <label class="form-check-label" for="deleteImage">기존 이미지 삭제</label>
             </div>
+        </div>
 
-            <div class="mb-3">
-			    <label for="content" class="form-label">내용:</label>
-			    <input type="hidden" id="content" th:field="*{content}">
-			
-			    <div id="editor" contenteditable="true" class="form-control" style="min-height: 150px;">
-			        <span th:utext="${board.content}"></span>
-			    </div>
-			    <div class="mb-2">
-        <label for="colorPicker" class="form-label">글자색 선택:</label>
-        <input type="color" id="colorPicker" class="form-control form-control-color" value="#000000" title="글자색 선택">
-    </div>
-			</div>
+        <button type="submit" class="btn btn-primary">수정 완료</button>
+    </form>
+</div>
 
-            <div class="mb-3">
-                <label for="image" class="form-label">이미지:</label>
-                <input type="file" id="image" name="image" class="form-control">
-                <div th:if="${board.imagePath != null and !board.imagePath.isEmpty()}">
-                    <p class="mt-2">현재 이미지:</p>
-                    <img th:src="${board.imagePath}" alt="기존 이미지" class="preview-image" id="currentImagePreview">
-                    <br>
-                    <input type="checkbox" id="deleteImage" name="deleteImage" value="true">
-                    <label for="deleteImage">기존 이미지 삭제</label>
-                </div>
-                <img id="imagePreview" src="#" alt="이미지 미리보기" class="preview-image" style="display: none;">
-            </div>
-
-            <button type="submit" class="btn btn-primary">수정 완료</button>
-            <a th:href="@{/board/{id}(id=${board.id})}" class="btn btn-secondary">취소</a>
-        </form>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script th:inline="javascript">
-    /* Thymeleaf 변수를 JavaScript에서 사용 */
-    var allCategories = /*[[${allCategories}]]*/ [];
-    var allSubcategoriesMap = /*[[${allSubcategoriesMap}]]*/ {};
-    var allCertificatesMap = /*[[${allCertificatesMap}]]*/ {};
-
-    // 드롭다운 업데이트 함수 (기존과 동일)
-    function updateSubcategories() {
-        var categorySelect = document.getElementById('category');
-        var subcategorySelect = document.getElementById('subcategory');
-        var selectedCategory = categorySelect.value;
-
-        subcategorySelect.innerHTML = '<option value="">서브카테고리 선택</option>';
-        var subs = allSubcategoriesMap[selectedCategory];
-        if (subs) {
-            subs.forEach(function(sub) {
-                var option = document.createElement('option');
-                option.value = sub;
-                option.textContent = sub;
-                subcategorySelect.appendChild(option);
-            });
-        }
-        updateCertificates();
-    }
-
-    function updateCertificates() {
-        var subcategorySelect = document.getElementById('subcategory');
-        var certificateSelect = document.getElementById('certificateName');
-        var selectedSubcategory = subcategorySelect.value;
-
-        certificateSelect.innerHTML = '<option value="">자격증명 선택</option>';
-        var certs = allCertificatesMap[selectedSubcategory];
-        if (certs) {
-            certs.forEach(function(cert) {
-                var option = document.createElement('option');
-                option.value = cert;
-                option.textContent = cert;
-                certificateSelect.appendChild(option);
-            });
-        }
-    }
-
-    // 이미지 미리보기 기능 (기존과 동일)
-    document.getElementById('image').addEventListener('change', function(event) {
-        var imagePreview = document.getElementById('imagePreview');
-        var currentImagePreview = document.getElementById('currentImagePreview');
-        var file = event.target.files[0];
-        if (file) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-                if (currentImagePreview) {
-                    currentImagePreview.style.display = 'none';
-                }
-            };
-            reader.readAsDataURL(file);
-        } else {
-            imagePreview.style.display = 'none';
-            if (currentImagePreview) {
-                currentImagePreview.style.display = 'block';
-            }
-        }
-    });
-
-    // ★★★ DOMContentLoaded 이벤트 리스너 추가 (초기 드롭다운 설정 및 에디터 로직) ★★★
+<script th:inline="javascript">
     document.addEventListener('DOMContentLoaded', function() {
-        // 드롭다운 초기 설정 (컨트롤러에서 넘겨준 selectedCategory 등을 기반으로)
-        // modify.html 컨트롤러에서 selectedCategory, selectedSubcategory, selectedCertificate가 모델에 있으므로
-        // 이들을 사용하여 드롭다운을 초기화해야 합니다.
-        var categorySelect = document.getElementById('category');
-        var subcategorySelect = document.getElementById('subcategory');
-        var certificateSelect = document.getElementById('certificateName');
-
+        const categorySelect = document.getElementById('category');
+        const subcategorySelect = document.getElementById('subcategory');
+        const certificateSelect = document.getElementById('certificateName');
         const editor = document.getElementById("editor");
-        const colorPicker = document.getElementById("colorPicker"); // HTML에 이 ID를 가진 input[type="color"]가 있다고 가정합니다.
-        const hiddenContentInput = document.getElementById("content");
-        
-        // 컨트롤러에서 넘어온 초기값
-        var initialSelectedCategory = /*[[${selectedCategory}]]*/ '';
-        var initialSelectedSubcategory = /*[[${selectedSubcategory}]]*/ '';
-        var initialSelectedCertificate = /*[[${selectedCertificate}]]*/ '';
+        const hiddenContent = document.getElementById("hiddenContent");
+        const colorPicker = document.getElementById("colorPicker");
 
-        // 색 변경 코드
-        if (colorPicker) {
-            colorPicker.addEventListener("change", function () {
-                editor.focus();
-                document.execCommand("foreColor", false, this.value);
-            });
+        const initialCategory = /*[[${selectedCategory}]]*/ '';
+        const initialSubCategory = /*[[${selectedSubCategory}]]*/ '';
+        const initialCertificate = /*[[${selectedCertificate}]]*/ '';
 
-            editor.addEventListener("keydown", function () {
-                 document.execCommand("foreColor", false, colorPicker.value);
-            });
-        } else {
-            console.warn("Color picker element not found! Make sure an input with id='colorPicker' exists in HTML.");
-        }
-        
-        // 1. 카테고리 초기 선택
-        if (initialSelectedCategory) {
-            categorySelect.value = initialSelectedCategory;
-            // 서브카테고리 업데이트 (자동 선택 방지, 초기값으로 선택되도록)
-            updateSubcategories(); // 모든 서브카테고리 옵션을 채움
-            // 현재 서브카테고리가 있으면 선택
-            if (initialSelectedSubcategory) {
-                subcategorySelect.value = initialSelectedSubcategory;
-            }
-            // 자격증 업데이트 (자동 선택 방지, 초기값으로 선택되도록)
-            updateCertificates(); // 모든 자격증 옵션을 채움
-            // 현재 자격증이 있으면 선택
-            if (initialSelectedCertificate) {
-                certificateSelect.value = initialSelectedCertificate;
-            }
-            
+        // 1. 본문 HTML 초기화
+        if (hiddenContent && editor) {
+            editor.innerHTML = hiddenContent.value;
         }
 
-        // 드롭다운 변경 이벤트 리스너 (기존과 동일)
-        categorySelect.addEventListener('change', updateSubcategories);
-        subcategorySelect.addEventListener('change', updateCertificates);
+        // 2. 글자 색상 기능
+        colorPicker.addEventListener("change", function () {
+            editor.focus();
+            document.execCommand("foreColor", false, this.value);
+        });
 
-        // ★★★ 폼 제출 전 내용을 hidden input에 복사하는 함수 추가 ★★★
-        // 이 함수를 폼의 onsubmit="return prepareModifySubmit();" 에 연결합니다.
-        window.prepareModifySubmit = function() {
-        	
-            const titleInput = document.getElementById('title');
-            const title = titleInput.value.trim();
+        editor.addEventListener("keydown", function () {
+            document.execCommand("foreColor", false, colorPicker.value);
+        });
 
-            let editorHtmlContent = editor.innerHTML;
-            
+        // 3. 폼 제출 시 본문 HTML 저장
+        document.getElementById("boardModifyForm").addEventListener("submit", function () {
+            hiddenContent.value = editor.innerHTML;
+        });
 
-            // ★★★ 불필요한 최상위 태그 제거 로직 개선 ★★★
-            // 1. 임시 div를 만들고 현재 editor의 내용을 innerHTML로 설정
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = editorHtmlContent;
+        // 드롭다운 설정 유지
+        if (initialCategory) {
+            updateSubcategories(initialCategory, initialSubCategory, initialCertificate, true);
+        }
 
-            // 2. tempDiv의 자식 노드를 순회하며 불필요한 최상위 래퍼 태그 제거
-            //    contenteditable은 내용을 <p> 또는 <div> 또는 <span>으로 감싸는 경향이 있음.
-            //    여기서는 최상위 레벨에 단일 자식이 있고, 그 자식이 특정 태그일 경우에만 제거
-            
-            // 내용이 비어있거나, &nbsp; 같은 공백만 있는 경우 처리
-            if (tempDiv.textContent.trim() === '' && tempDiv.innerHTML.trim() !== '') {
-                // 실제 텍스트는 없는데 <br> 같은 태그만 있는 경우도 contentEditable이 <p> 또는 <div>로 감쌈
-                // 이 경우 content를 빈 문자열로 처리하여 저장하지 않도록 유도
-                editorHtmlContent = ''; 
-                
-            } else if (tempDiv.children.length === 1) {
-                const firstChild = tempDiv.children[0];
-                const tagName = firstChild.tagName.toLowerCase();
+        categorySelect.addEventListener('change', function() {
+            updateSubcategories(this.value, null, null, false);
+        });
 
-                // 주로 제거하고 싶은 태그 목록. <p> 태그는 단락을 의미하므로 상황에 따라 제거하지 않을 수도 있습니다.
-                // 현재는 불필요한 <span> 제거가 주 목적이므로, <span>과 <div>에 초점.
-                // <p>는 문단 구분을 위해 남겨두는 경우도 많습니다.
-                const removableWrapperTags = ['span', 'div']; 
+        subcategorySelect.addEventListener('change', function() {
+            updateCertificates(categorySelect.value, this.value, null, false);
+        });
 
-                if (removableWrapperTags.includes(tagName)) {
-                    // 자식 태그의 innerHTML을 가져와서 불필요한 최상위 태그를 제거
-                    // 하지만 만약 그 자식 태그의 innerHTML도 비어있다면 제거하지 않도록 방지
-                    if (firstChild.innerHTML.trim() !== '') {
-                        editorHtmlContent = firstChild.innerHTML;
-                        
-                    } else {
-                        // 자식 태그가 빈 태그라면 그냥 빈 문자열로 처리
-                        editorHtmlContent = '';
-                        
-                    }
+        function updateSubcategories(selectedCategory, initialSubCategoryValue, initialCertificateValue, isInitialLoad) {
+            subcategorySelect.innerHTML = '<option value="">-- 서브카테고리 선택 --</option>';
+            certificateSelect.innerHTML = '<option value="">-- 자격증 선택 --</option>';
+
+            if (selectedCategory) {
+                fetch(`/board/api/subcategories?category=${selectedCategory}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(sub => {
+                            const option = document.createElement('option');
+                            option.value = sub;
+                            option.textContent = sub;
+                            if (isInitialLoad && sub === initialSubCategoryValue) {
+                                option.selected = true;
+                            }
+                            subcategorySelect.appendChild(option);
+                        });
+                        const currentSubCategoryForCert = isInitialLoad ? initialSubCategoryValue : subcategorySelect.value;
+                        updateCertificates(selectedCategory, currentSubCategoryForCert, initialCertificateValue, isInitialLoad);
+                    });
+            }
+        }
+
+        function updateCertificates(selectedCategory, selectedSubCategory, initialCertificateValue, isInitialLoad) {
+            certificateSelect.innerHTML = '<option value="">-- 자격증 선택 --</option>';
+            if (selectedCategory && selectedSubCategory) {
+                fetch(`/board/api/certificates?category=${selectedCategory}&subCategory=${selectedSubCategory}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(cert => {
+                            const option = document.createElement('option');
+                            option.value = cert.certificateName;
+                            option.textContent = cert.certificateName;
+                            if (isInitialLoad && cert.certificateName === initialCertificateValue) {
+                                option.selected = true;
+                            }
+                            certificateSelect.appendChild(option);
+                        });
+                    });
+            }
+        }
+
+        // 이미지 미리보기
+        document.getElementById('image').addEventListener('change', function(event) {
+            const imagePreview = document.getElementById('imagePreview');
+            const currentImagePreview = document.getElementById('currentImagePreview');
+            const deleteImageCheckbox = document.getElementById('deleteImage');
+
+            if (event.target.files && event.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    if (currentImagePreview) currentImagePreview.style.display = 'none';
+                    if (deleteImageCheckbox) deleteImageCheckbox.checked = false;
                 }
+                reader.readAsDataURL(event.target.files[0]);
             }
-            // 추가적인 정리: 연속된 <br> 태그를 줄바꿈으로 변환하거나 제거 (선택 사항)
-            // editorHtmlContent = editorHtmlContent.replace(/(<br\s*\/?>\s*){2,}/g, '<br>'); // 두 개 이상의 <br>을 하나로
-            // editorHtmlContent = editorHtmlContent.replace(/<br\s*\/?>\s*$/, ''); // 마지막 <br> 제거
+        });
 
-            
-            
-            // 순수 텍스트 추출 (유효성 검사용)
-            // <br> 태그도 줄바꿈으로 처리하여 빈 내용을 정확히 감지
-            const plainTextContent = editorHtmlContent.replace(/<br\s*\/?>/g, '\n').replace(/<[^>]*>/g, '').trim(); 
-
-            
-
-            // 유효성 검사
-            if (!title || plainTextContent === "") {
-                
-                alert("제목과 본문을 모두 입력해주세요.");
-                return false; // 폼 제출 방지
+        document.getElementById('deleteImage')?.addEventListener('change', function() {
+            const imagePreview = document.getElementById('imagePreview');
+            const currentImagePreview = document.getElementById('currentImagePreview');
+            if (this.checked) {
+                if (currentImagePreview) currentImagePreview.style.display = 'none';
+                imagePreview.style.display = 'none';
+                document.getElementById('image').value = '';
+            } else {
+                if (currentImagePreview) currentImagePreview.style.display = 'block';
             }
-
-            // 최종 정리된 HTML 내용을 hidden input에 복사
-            hiddenContentInput.value = editorHtmlContent;	
-
-            
-
-            return true; // 폼 제출 허용
-        };
+        });
     });
 </script>
 </body>
